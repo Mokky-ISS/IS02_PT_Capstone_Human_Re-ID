@@ -1,6 +1,7 @@
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 
+
 sp_logo = dbc.Col(
     id='ai-singapore-col',
     children=[
@@ -46,4 +47,24 @@ title_block = dbc.Row(
     ],
     no_gutters=True,
 )
+
+subtitle = dbc.Col(
+    id='subtitle-col',
+    children=[
+        dbc.Col([
+            html.H4(
+                id='page-subtitle',
+                children='',
+                style={
+                    'text-align': 'center',
+                }
+            ),
+        ]),
+    ],
+    width=True,
+    align='center',
+)
+
+
+
 
