@@ -11,3 +11,16 @@ Inference Process Flow:
 ![image](https://user-images.githubusercontent.com/39640791/113481779-23385400-94ce-11eb-8b09-11b14f64203c.png)
 
 
+## To run this:
+1. Download "reid_db.db" and put it in the same directory
+https://drive.google.com/file/d/1xk6ldsRfXYi0zjMBjLNxiz89Nd0rnG_T/view?usp=sharing
+2. Install relevant requirement / dependencies
+3. Open up "test_model_tidy.ipynb" notebook and start testing.
+4. Basically just need to define an image path and calling the relevant functions to find a match.
+
+
+## Note:
+- "reid_db" contains information of testing dataset. Hence you should try on query images to test the performance
+- Only "matched identity ID" will be returned. To see what are the matching images, data is recorded in reid_db under inference table.
+
+
