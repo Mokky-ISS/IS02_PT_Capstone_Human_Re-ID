@@ -17,6 +17,8 @@ class reid_inference:
     """Reid Inference class.
     """
 
+
+
     def __init__(self):
         cudnn.benchmark = True
         self.Cfg = Config()
@@ -86,13 +88,13 @@ class reid_inference:
         return query_feat
 
 
+
     def infer(self, query_feat, query_img_path, top_k= 3, to_db=True):
 
         dist_mat = torch.nn.functional.cosine_similarity(query_feat, self.all_gal_feat).cpu().numpy()
         indices = np.argsort(dist_mat)[::-1]
 
         if to_db:
-
             #if match found --> insert to human_table, need a human list too. make it into class
             #if no match found --> insert new identity to human_table.
             if dist_mat[indices[0]] >= self.Cfg.THRESHOLD:
@@ -105,8 +107,6 @@ class reid_inference:
                 query_img_id = query_img_path.split('/')[-1]
                 insert_human_db(query_img_id, identity)
                 self.human_dict[query_img_id] = identity
-
-
             else:
                 #no match found
                 new_identity = str(int(max(self.human_dict.values()))+1)
@@ -122,8 +122,6 @@ class reid_inference:
             self.all_img_path.append(query_img_path)
             self.all_gal_feat = torch.cat([self.all_gal_feat, self._tmp_galfeat])
 
-
-
             record = [query_img_path.split('/')[-1],convertToBinaryData(query_img_path)]
             #query_img_id, match_1_img_id, match_1_img, match_1_dist, match_2_img_id,match_2_img, match_2_dist, match_3_img_id, match_3_img, match_3_dist
             for k in range(top_k):
@@ -136,7 +134,6 @@ class reid_inference:
                     record.append(None)
                     record.append(None)
             insert_infer_db(record)
-                
         else:
             plt.subplot(1, top_k+2, 1)
             plt.title('Query')
@@ -152,39 +149,3 @@ class reid_inference:
                 plt.axis('off')
                 plt.imshow(img)
             plt.show()
-
-
-
-
-
-
-
-    
-    # def build_all_gallery(dir_to_gal_folder = self.Cfg.GALLERY_DIR, to_db = False):
-    #     """
-    #     TAKE NOTEE!! TO BE MODIFIED AS WE NO LONGER NEED TO MASS UPLOAD FROM
-    #     IMG FILE TO GALLERY DB.
-    #     """
-    #     all_gal_feat = []
-    #     all_img_id = os.listdir(dir_to_gal_folder) #this is id rather than path
-
-    #     db_feat = []
-    #     db_img = []
-
-    #     print(f'Building gallery from {dir_to_gal_folder}...')
-    #     for img in all_img_id:
-    #         gal_feat = to_gallery_feat(dir_to_gal_folder + "/" + img)
-    #         all_gal_feat.append(gal_feat)
-    #         db_feat.append(pickle.dumps(gal_feat))
-    #         db_img.append(convertToBinaryData(dir_to_gal_folder + "/" + img))
-
-    #     all_gal_feat = torch.cat(all_gal_feat, dim=0)
-
-    #     if to_db:
-    #         db_img_path = [dir_to_gal_folder + "/" + img for img in all_img_id]
-    #         db_humam_id = [img.split('_')[0] for img in all_img_id]
-    #         insert_vector_db(all_img_id, db_img_path, db_img, db_feat)
-    #         insert_human_db(all_img_id, db_humam_id)
-    #         print('All gallery uploaded to DB.')
-    #     else:
-    #         return all_gal_feat, all_img_id
