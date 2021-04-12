@@ -1,0 +1,8 @@
+https://zetcode.com/python/sqlite/
+https://jdhao.github.io/2019/07/06/python_opencv_pil_image_to_bytes/
+https://stackoverflow.com/questions/18621513/python-insert-numpy-array-into-sqlite3-database/31312102#31312102
+https://www.codegrepper.com/code-examples/whatever/store+numpy+array+in+database
+https://www.w3schools.com/sql/sql_datatypes.asp
+https://stackoverflow.com/questions/1263451/python-decorators-in-classes
+https://sqlitebrowser.org/dl/
+https://github.com/soumilshah1995/python-youtube-tutorials/blob/master/Load%20and%20Upload%20Images%20to%20Sqlite3/master.py
