@@ -1,32 +1,4 @@
-from database import ImageDB
-from tools import generate_detections as gdet
-from deep_sort.tracker import Tracker
-from deep_sort.detection import Detection
-from deep_sort import preprocessing, nn_matching
-from tensorflow.compat.v1 import InteractiveSession
-from tensorflow.compat.v1 import ConfigProto
-import matplotlib.pyplot as plt
-import numpy as np
-import cv2
-from PIL import Image
-from core.config import cfg
-from tensorflow.python.saved_model import tag_constants
-from core.yolov4 import filter_boxes
-import core.utils as utils
-from absl.flags import FLAGS
-from absl import app, flags, logging
-import tensorflow as tf
-import time
-import os
-# comment out below line to enable tensorflow logging outputs
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-physical_devices = tf.config.experimental.list_physical_devices('GPU')
-if len(physical_devices) > 0:
-    tf.config.experimental.set_memory_growth(physical_devices[0], True)
-# deep sort imports
-# export to database
-
-# UNCOMMEND THESE FLAGS IF YOU WANT TO DIRECTLY RUN THIS CODE USING python human_tracker.py
+## UNCOMMEND THESE FLAGS IF YOU WANT TO DIRECTLY RUN THIS CODE USING python human_tracker.py
 # flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
 # flags.DEFINE_string('weights', './checkpoints/yolov4-416',
 #                     'path to weights file')
@@ -45,8 +17,58 @@ if len(physical_devices) > 0:
 # flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
 # flags.DEFINE_boolean('db', True, 'save information in database')
 
+###
+# Note: Attempt to import packages here will cause CUDA ERROR, as parent process (main.py) will call this script 
+# and import packages into parent process instead of child process.
+###
 
-def main(_argv):
+# absl flag packages
+from absl.flags import FLAGS
+from absl import app, flags, logging
+
+# child process from main.py
+def camera_capture(cam_id):
+    # assign camera id into new camera process.
+    flags.DEFINE_integer('cam_id', cam_id, 'camera ID to run on different camera')
+    try:
+        app.run(run_human_tracker)
+    except SystemExit:
+        pass
+        
+def run_human_tracker(_argv):
+    # Every neccessary packages must be imported within the child process instead of parent process, 
+    # to avoid error of "could not retrieve CUDA device count: CUDA_ERROR_NOT_INITIALIZED: initialization error"
+
+    # export to database
+    from database import ImageDB
+    # deep sort imports
+    from tools import generate_detections as gdet
+    from deep_sort.tracker import Tracker
+    from deep_sort.detection import Detection
+    from deep_sort import preprocessing, nn_matching
+    # system packages
+    import time
+    import os
+    # tensorflow packages
+    import tensorflow as tf
+    from tensorflow.compat.v1 import InteractiveSession
+    from tensorflow.compat.v1 import ConfigProto
+    from tensorflow.python.saved_model import tag_constants
+    import core.utils as utils
+    from core.config import cfg
+    from core.yolov4 import filter_boxes
+    # other packages
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import cv2
+    from PIL import Image
+
+    # comment out below line to enable tensorflow logging outputs
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    physical_devices = tf.config.experimental.list_physical_devices('GPU')
+    if len(physical_devices) > 0:
+        tf.config.experimental.set_memory_growth(physical_devices[0], True)
+        
     # Definition of the parameters
     max_cosine_distance = 0.4
     nn_budget = None
@@ -117,7 +139,7 @@ def main(_argv):
         else:
             print('Video has ended or failed, try a different video format!')
             break
-        print('Frame #: ', frame_num)
+        print("[cam %d] Frame #: %d" %(FLAGS.cam_id,frame_num))
 
         frame_size = frame.shape[:2]
         image_data = cv2.resize(frame, (input_size, input_size))
@@ -228,8 +250,9 @@ def main(_argv):
             class_name = track.get_class()
 
             # update database
+            # skip frame is done here to extract less data for database, if overall FPS for videocapture is reduced to one, tracker wont work. 
             if FLAGS.db and frame_num % FLAGS.skip_frame == 0:
-                print("inside=================")
+                print("======== DATABASE =========")
                 # single patch box
                 patch_bbox = track.to_tlwh()
                 patch_np = gdet.get_img_patch(patch_frame, patch_bbox)
@@ -256,7 +279,7 @@ def main(_argv):
 
         # calculate frames per second of running detections
         fps = 1.0 / (time.time() - start_time)
-        print("FPS: %.2f" % fps)
+        print("[cam %d] FPS: %.2f" % (FLAGS.cam_id, fps))
         result = np.asarray(frame)
         result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
@@ -270,15 +293,6 @@ def main(_argv):
             break
         frame_num += 1
     cv2.destroyAllWindows()
-
-
-def camera_capture(cam_id):
-    # assign camera id into new camera process.
-    flags.DEFINE_integer('cam_id', cam_id, 'camera ID to run on different camera')
-    try:
-        app.run(main)
-    except SystemExit:
-        pass
 
 
 if __name__ == '__main__':
