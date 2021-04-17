@@ -6,11 +6,15 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output
-from demo_dash import header_v2 as header
+from src.demo_dash import header_v2 as header
+from src.database import query_image, query_re_id
 from urllib.parse import parse_qs
 import base64
 import cv2
 import mediapipe as mp
+
+dbimage = query_image.DbQuery()
+dbreid = query_re_id.DbQuery()
 
 external_stylesheets = [
     dbc.themes.COSMO,
@@ -89,10 +93,10 @@ def view1_page_content():
         id='view1-page-sidebar',
         children=[
             html.P('Human ID:'),
-            dbc.Input(
-                id='human-ID',
-                type='text',
-            ),
+            dbc.Spinner(dcc.Dropdown(
+                id='human-id',
+                options=dbreid.get_human_id_options(),
+            )),
             html.Br(),
             dbc.Row([
                 dbc.Col(html.P('From:'), width=2),
