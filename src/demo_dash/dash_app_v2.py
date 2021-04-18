@@ -106,6 +106,9 @@ def view1_page_content():
             html.Br(),
             html.P('Camera/location:'),
             dbc.Spinner(dcc.Dropdown(id='view1-cam-loc-dropdown', options=CAMERA_LOCATION_OPTIONS)),
+            html.Br(),
+            dbc.Button(children='Refresh', id='view1-btn-refresh',
+                       color='primary', block=True, size="lg"),
         ],
         width=2,
         style=SIDEBAR_STYLE,
@@ -188,12 +191,13 @@ def view2_page_content():
 @app.callback(
     Output(component_id='view1-images-row', component_property='children'),
     Output(component_id='view1-logs-text', component_property='value'),
-    Input(component_id='view1-human-id', component_property='value'),
-    Input(component_id='view1-datetime', component_property='start_date'),
-    Input(component_id='view1-datetime', component_property='end_date'),
-    Input(component_id='view1-cam-loc-dropdown', component_property='value'),
+    Input(component_id='view1-btn-refresh', component_property='n_clicks'),
+    State(component_id='view1-human-id', component_property='value'),
+    State(component_id='view1-datetime', component_property='start_date'),
+    State(component_id='view1-datetime', component_property='end_date'),
+    State(component_id='view1-cam-loc-dropdown', component_property='value'),
 )
-def update_view1_images(human_id, start_date, end_date, cam_loc):
+def update_view1_images(btn_clicks, human_id, start_date, end_date, cam_loc):
     #print(human_id, start_date, end_date, cam_loc)
     df_images = dbreid.get_images(human_id=human_id, start_datetime=start_date, end_datetime=end_date)
     #print(df_images.columns)
