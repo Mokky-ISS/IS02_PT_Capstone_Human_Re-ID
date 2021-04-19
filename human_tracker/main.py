@@ -29,6 +29,7 @@ def db_process():
     #db = ImageDB()
     # db.insert_data
 
+
 class MultiPs():
     def __init__(self):
         self.job = []
@@ -75,9 +76,9 @@ def main(_argv):
     print("Start Multiprocessing..")
     # run new camera process
     mps.new_job('camera_ch2', camera_capture, 2)
-    mps.new_job('camera_ch3', camera_capture, 3)
+    #mps.new_job('camera_ch3', camera_capture, 3)
     #mps.new_job('database_ps', db_process)
-    mps.new_job('camera_ch15', camera_capture, 15)
+    #mps.new_job('camera_ch15', camera_capture, 15)
 
     for j in mps.job:
         j.start()

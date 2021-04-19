@@ -72,7 +72,9 @@ def run_human_tracker(_argv):
     # Definition of the parameters
     max_cosine_distance = 0.4
     nn_budget = None
-    nms_max_overlap = 1.0
+
+    #nms_max_overlap = 1.0
+    nms_max_overlap = 0.75  # reduce this variable to reduce identity switch
 
     # initialize deep sort
     model_filename = 'model_data/mars-small128.pb'
@@ -88,10 +90,15 @@ def run_human_tracker(_argv):
     session = InteractiveSession(config=config)
     STRIDES, ANCHORS, NUM_CLASS, XYSCALE = utils.load_config(FLAGS)
     input_size = FLAGS.size
-    vid_name = 'ch' + str(FLAGS.cam_id) + '.mp4'
-    video_path = os.path.join(FLAGS.video, vid_name)
-    print('video_path:', video_path)
-
+    video_path = None
+    if not FLAGS.video.isdigit():
+        vid_name = 'ch' + str(FLAGS.cam_id) + '.mp4'
+        video_path = os.path.join(FLAGS.video, vid_name)
+        print('video_path:', video_path)
+    else:
+        video_path = int(FLAGS.video)
+        print("Use webcam", video_path)
+        print(type(video_path))
     # load tflite model if flag is set
     if FLAGS.framework == 'tflite':
         interpreter = tf.lite.Interpreter(model_path=FLAGS.weights)
@@ -284,7 +291,8 @@ def run_human_tracker(_argv):
         result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
         if not FLAGS.dont_show:
-            cv2.imshow("Output Video", result)
+            window_name = "Output from cam " + str(FLAGS.cam_id)
+            cv2.imshow(window_name, result)
 
         # if output flag is set, save video file
         if FLAGS.output:
