@@ -7,7 +7,8 @@ from . import kalman_filter
 
 INFTY_COST = 1e+5
 
-
+# Hungarian Algorithm
+# for both confirmed and unconfirmed tracks, matching with faeture and IOU similarity respectively.
 def min_cost_matching(
         distance_metric, max_distance, tracks, detections, track_indices=None,
         detection_indices=None):
@@ -75,7 +76,7 @@ def min_cost_matching(
             matches.append((track_idx, detection_idx))
     return matches, unmatched_tracks, unmatched_detections
 
-
+# for confirmed tracks, matching with feature similarity
 def matching_cascade(
         distance_metric, max_distance, cascade_depth, tracks, detections,
         track_indices=None, detection_indices=None):

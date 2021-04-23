@@ -62,6 +62,7 @@ def run_human_tracker(_argv):
     import numpy as np
     import cv2
     from PIL import Image
+    from collections import deque
 
     # comment out below line to enable tensorflow logging outputs
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -69,12 +70,24 @@ def run_human_tracker(_argv):
     if len(physical_devices) > 0:
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
         
-    # Definition of the parameters
+    ## Increase max_cosine_distance variable to reduce identity switching. 
+    ## Increase the threshold will increase the tolerance to change the track id on a human.
+    ## Refer non_max_suppression function in preprocessing.py.
+    #max_cosine_distance = 0.4 (original value)
     max_cosine_distance = 0.4
+    # 0.55
+
+    ## Number of features to store in every tracked human. 
+    ## Refer partial_fit function in nn_matching.py. 
     nn_budget = None
 
-    #nms_max_overlap = 1.0
-    nms_max_overlap = 0.75  # reduce this variable to reduce identity switch
+    ## Reduce this variable to reduce identity switching. 
+    ## This will only reduce overlap detections within one frame, 
+    ## to ensure that only one detection box is assigned to one human.
+    ## Refer non_max_suppression function in preprocessing.py.
+    #nms_max_overlap = 1.0 (original value)
+    nms_max_overlap = 1.0 
+    # 0.75 
 
     # initialize deep sort
     model_filename = 'model_data/mars-small128.pb'
@@ -135,6 +148,10 @@ def run_human_tracker(_argv):
         output_path = os.path.join(FLAGS.output, output_name)
         out = cv2.VideoWriter(output_path, codec, fps, (width, height))
         print('output_path:', output_path)
+
+    # Dictionary for historical trajectory points 
+    h_pts = {}
+    #h_pts = [deque(maxlen=30) for _ in range(1000)]
 
     frame_num = 0
     # while video is running
@@ -245,7 +262,10 @@ def run_human_tracker(_argv):
         # Call the tracker
         tracker.predict()
         tracker.update(detections)
-
+        print("Active targets: ", end =" ")
+        for sample in tracker.metric.samples:
+            print(sample, ' ', end =" ")
+        print('\n')
         # copy a new frame for patch image without boxes
         patch_frame = frame.copy()
 
@@ -272,7 +292,7 @@ def run_human_tracker(_argv):
                 img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np, patch_bbox, frame_num)
                 #print("Data Type:", type(frame_num),type(track.track_id),type(patch_img),type(patch_bbox))
 
-        # draw bbox on screen
+            # draw bbox on screen
             color_num = ''.join(str(ord(c)) for c in track.track_id)
             color = colors[int(color_num) % len(colors)]
             color = [i * 255 for i in color]
@@ -280,7 +300,17 @@ def run_human_tracker(_argv):
             cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*17, int(bbox[1])), color, -1)
             cv2.putText(frame, class_name + "-" + str(track.track_id), (int(bbox[0]), int(bbox[1]-10)), 0, 0.75, (255, 255, 255), 2)
 
-        # if enable info flag then print details about each track
+            # draw historical trajectory
+            if FLAGS.trajectory:
+                center = (int((bbox[0]+ bbox[2])/2), int((bbox[1]+ bbox[3])/2))
+                h_pts.setdefault(track.track_id, deque(maxlen=30)).append(center)
+                for j in range(1, len(h_pts[track.track_id])):
+                    if h_pts[track.track_id][j-1] is None or h_pts[track.track_id][j] is None:
+                        continue
+                    thickness = int(np.sqrt(64/float(j+1))*2)
+                    cv2.line(frame, (h_pts[track.track_id][j-1]), (h_pts[track.track_id][j]), color, thickness)
+
+            # if enable info flag then print details about each track
             if FLAGS.info:
                 print("Tracker ID: {}, Class: {},  BBox Coords (xmin, ymin, xmax, ymax): {}".format(str(track.track_id), class_name, (int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))))
 

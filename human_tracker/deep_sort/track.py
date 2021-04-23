@@ -74,6 +74,7 @@ class Track:
 
         self.state = TrackState.Tentative
         self.features = []
+        # add in initial feature of the track
         if feature is not None:
             self.features.append(feature)
 
@@ -141,6 +142,7 @@ class Track:
         """
         self.mean, self.covariance = kf.update(
             self.mean, self.covariance, detection.to_xyah())
+        # add in new feature after the update
         self.features.append(detection.feature)
 
         self.hits += 1

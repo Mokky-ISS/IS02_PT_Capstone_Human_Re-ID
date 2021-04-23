@@ -38,7 +38,7 @@ class Tracker:
         The list of active tracks at the current time step.
 
     """
-
+    # max_iou_distance refers to IOU distance (reverse of IOU score) for association on two consecutive pair (previous and current frames).
     def __init__(self, metric, max_iou_distance=0.7, max_age=60, n_init=3):
         self.metric = metric
         self.max_iou_distance = max_iou_distance
@@ -67,7 +67,7 @@ class Tracker:
             A list of detections at the current time step.
 
         """
-        # Run matching cascade.
+        # Run matching cascade. Hungarian algorithm is executed within _match.
         matches, unmatched_tracks, unmatched_detections = \
             self._match(detections)
 
@@ -94,7 +94,10 @@ class Tracker:
             np.asarray(features), np.asarray(targets), active_targets)
 
     def _match(self, detections):
-
+        # note:
+        # - For new detection, it is classified as tentative in the first n_init frames. 
+        # - Only the tracks which are classified as confirmed will use feature similarity, other tracks wil use IOU similarity.
+        # - For new detection, if it cannot be matched using IOU similarity in every frame of the first n_init frames, it will be classified as deleted.
         def gated_metric(tracks, dets, track_indices, detection_indices):
             features = np.array([dets[i].feature for i in detection_indices])
             targets = np.array([tracks[i].track_id for i in track_indices])
