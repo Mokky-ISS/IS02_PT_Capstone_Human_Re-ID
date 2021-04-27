@@ -79,7 +79,8 @@ def run_human_tracker(_argv):
 
     ## Number of features to store in every tracked human. 
     ## Refer partial_fit function in nn_matching.py. 
-    nn_budget = None
+    #nn_budget = None
+    nn_budget = 1000
 
     ## Reduce this variable to reduce identity switching. 
     ## This will only reduce overlap detections within one frame, 
@@ -88,6 +89,9 @@ def run_human_tracker(_argv):
     #nms_max_overlap = 1.0 (original value)
     nms_max_overlap = 1.0 
     # 0.75 
+
+    # Saliant sampling soft threshold
+    soft_thred = 0.01
 
     # initialize deep sort
     model_filename = 'model_data/mars-small128.pb'
@@ -153,6 +157,14 @@ def run_human_tracker(_argv):
     h_pts = {}
     #h_pts = [deque(maxlen=30) for _ in range(1000)]
 
+    # plot soft threshold graph
+    if FLAGS.plot_graph:
+        x_list = {}
+        y_list = {}
+        fig = plt.figure()
+        # 1x1 grid, first subplot
+        ax = fig.add_subplot(1, 1, 1)
+    
     frame_num = 0
     # while video is running
     while True:
@@ -261,11 +273,11 @@ def run_human_tracker(_argv):
 
         # Call the tracker
         tracker.predict()
-        tracker.update(detections)
-        print("Active targets: ", end =" ")
-        for sample in tracker.metric.samples:
-            print(sample, ' ', end =" ")
-        print('\n')
+        tracker.update(detections)   
+
+        if FLAGS.plot_graph:
+            ax.clear()
+
         # copy a new frame for patch image without boxes
         patch_frame = frame.copy()
 
@@ -278,19 +290,66 @@ def run_human_tracker(_argv):
 
             # update database
             # skip frame is done here to extract less data for database, if overall FPS for videocapture is reduced to one, tracker wont work. 
-            if FLAGS.db and frame_num % FLAGS.skip_frame == 0:
-                print("======== DATABASE =========")
-                # single patch box
-                patch_bbox = track.to_tlwh()
-                patch_np = gdet.get_img_patch(patch_frame, patch_bbox)
-                patch_np = cv2.cvtColor(patch_np, cv2.COLOR_RGB2BGR)
-                # https://jdhao.github.io/2019/07/06/python_opencv_pil_image_to_bytes/
-                is_success, im_buf_arr = cv2.imencode(".jpg", patch_np)
-                patch_img = im_buf_arr.tobytes()
+            if FLAGS.db and frame_num % FLAGS.skip_frame == 0:  
+                # Saliant sampling
+                print("=================================================")
+                print("Active targets: ", end =" ")
+                dist = None
+                for sample_id, features in tracker.metric.samples.items():
+                    print(sample_id, len(features), ";", end =" ")
+                    if sample_id != track.track_id:
+                        continue
+                    last_feat = []
+                    last_feat.append(features[-1])
+                    if sample_id in tracker.metric.store_feats:
+                        # cosine distance checking with soft threshold
+                        # dist is 1x1 ndarray
+                        #print("last_feat:", last_feat[0].shape)
+                        #print("store_feats:", tracker.metric.store_feats[sample_id][0].shape)
+                        dist = nn_matching._cosine_distance(np.asarray(last_feat), np.asarray(tracker.metric.store_feats[sample_id]))
+                        # if dist is more than soft threshold, the track would have the same human with different view
+                        if dist[0,0] > soft_thred:
+                            track.unique_same_human = True
+                        # store the lastest feature into store_feats
+                        tracker.metric.store_feats[sample_id] = [features[-1]]
+                    else:
+                        tracker.metric.store_feats.setdefault(sample_id, []).append(features[-1])  
+                        #print("unique_same_human:", sample_id)
+                        track.unique_same_human = True
+                print('\n')
+                print("dist:", dist)
+                if dist is not None and FLAGS.plot_graph:
+                    trk_id = track.track_id
+                    print("current track_id:", trk_id)
+                    print("dist:", dist[0,0])
+                    x_list.setdefault(trk_id, []).append(frame_num)
+                    y_list.setdefault(trk_id, []).append(dist[0,0])
+                    print("x_list:", x_list[trk_id])
+                    print("y_list:", y_list[trk_id])
+                    print("x len:", len(x_list[trk_id]))
+                    print("y len:", len(y_list[trk_id]))
+                    #ax.plot(x_list[trk_id], y_list[trk_id], label=trk_id)
+                    #ax.set_yscale('log')
+                
 
-                # export data to database
-                img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np, patch_bbox, frame_num)
-                #print("Data Type:", type(frame_num),type(track.track_id),type(patch_img),type(patch_bbox))
+                # Record unique frame only into database
+                if track.unique_same_human == True or not FLAGS.saliant_sampling:
+                    print("======== DATABASE =========")
+                    print("record track_id:", track.track_id)
+                    # single patch box
+                    patch_bbox = track.to_tlwh()
+                    patch_np = gdet.get_img_patch(patch_frame, patch_bbox)
+                    patch_np = cv2.cvtColor(patch_np, cv2.COLOR_RGB2BGR)
+                    # https://jdhao.github.io/2019/07/06/python_opencv_pil_image_to_bytes/
+                    is_success, im_buf_arr = cv2.imencode(".jpg", patch_np)
+                    patch_img = im_buf_arr.tobytes()
+
+                    # export data to database
+                    img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np, patch_bbox, frame_num)
+                    #print("Data Type:", type(frame_num),type(track.track_id),type(patch_img),type(patch_bbox))
+                    
+                    # Reset unique_same_human bool state
+                    track.unique_same_human = False
 
             # draw bbox on screen
             color_num = ''.join(str(ord(c)) for c in track.track_id)
@@ -330,6 +389,23 @@ def run_human_tracker(_argv):
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
         frame_num += 1
+        
+        # plot graph for soft threshold
+        if bool(x_list) and bool(y_list) and FLAGS.plot_graph:
+            key_list = x_list.keys() & y_list.keys()
+            for k in key_list:  
+                ax.plot(x_list[k], y_list[k], label=k)
+                ax.set_yscale('log')
+            plt.xlabel('Frames')
+            plt.ylabel('Cosine Distance (log)')
+            plt.title('Soft threshold plot')
+            # line for soft threshold
+            plt.axhline(y=soft_thred, color='r', linestyle='-', label="Soft Threshold")
+            plt.legend(loc="upper left")
+            plt.pause(0.000001)
+        print("========================= END =========================\n")
+    plt.savefig('soft_threshold.png')
+    #plt.show()
     cv2.destroyAllWindows()
 
 
@@ -338,3 +414,4 @@ if __name__ == '__main__':
         app.run(main)
     except SystemExit:
         pass
+loc="upper left"

@@ -71,7 +71,7 @@ class Tracker:
         matches, unmatched_tracks, unmatched_detections = \
             self._match(detections)
 
-        # Update track set.
+        # Update track set. matches: (track_idx, detection_idx)
         for track_idx, detection_idx in matches:
             self.tracks[track_idx].update(
                 self.kf, detections[detection_idx])

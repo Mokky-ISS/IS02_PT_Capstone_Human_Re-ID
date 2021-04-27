@@ -56,16 +56,22 @@ def min_cost_matching(
     cost_matrix = distance_metric(
         tracks, detections, track_indices, detection_indices)
     cost_matrix[cost_matrix > max_distance] = max_distance + 1e-5
+    print("final cost_matrix:", cost_matrix)
+    #print("final cost_matrix shape:", cost_matrix.shape)
     indices = linear_sum_assignment(cost_matrix)
     indices = np.asarray(indices)
     indices = np.transpose(indices)
+    #print("indices:", indices)
+    #print("indices:", indices.shape)
     matches, unmatched_tracks, unmatched_detections = [], [], []
     for col, detection_idx in enumerate(detection_indices):
         if col not in indices[:, 1]:
             unmatched_detections.append(detection_idx)
+            #print("unmatch det:", detection_idx)
     for row, track_idx in enumerate(track_indices):
         if row not in indices[:, 0]:
             unmatched_tracks.append(track_idx)
+            #print("unmatch track:", track_idx)
     for row, col in indices:
         track_idx = track_indices[row]
         detection_idx = detection_indices[col]
@@ -74,6 +80,9 @@ def min_cost_matching(
             unmatched_detections.append(detection_idx)
         else:
             matches.append((track_idx, detection_idx))
+            #print("row:", row)
+            #print("col:", col)
+            #print("matches:", matches)
     return matches, unmatched_tracks, unmatched_detections
 
 # for confirmed tracks, matching with feature similarity

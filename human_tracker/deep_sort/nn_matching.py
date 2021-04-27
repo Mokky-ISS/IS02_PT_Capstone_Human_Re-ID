@@ -51,8 +51,8 @@ def _cosine_distance(a, b, data_is_normalized=False):
     if not data_is_normalized:
         a = np.asarray(a) / np.linalg.norm(a, axis=1, keepdims=True)
         b = np.asarray(b) / np.linalg.norm(b, axis=1, keepdims=True)
-        print("a:", a.shape)
-        print("b:", b.shape)
+        #print("a:", a.shape)
+        #print("b:", b.shape)
     return 1. - np.dot(a, b.T)
 
 
@@ -95,7 +95,7 @@ def _nn_cosine_distance(x, y):
 
     """
     distances = _cosine_distance(x, y)
-    print("dist:", distances.shape)
+    #print("dist:", distances.shape)
     return distances.min(axis=0)
 
 
@@ -136,6 +136,8 @@ class NearestNeighborDistanceMetric(object):
         self.matching_threshold = matching_threshold
         self.budget = budget
         self.samples = {}
+        self.current_feats = {}
+        self.store_feats = {}
 
     def partial_fit(self, features, targets, active_targets):
         """Update the distance metric with new data.
@@ -151,7 +153,6 @@ class NearestNeighborDistanceMetric(object):
 
         """
         for feature, target in zip(features, targets):
-            print("partial")
             self.samples.setdefault(target, []).append(feature)
             if self.budget is not None:
                 self.samples[target] = self.samples[target][-self.budget:]
@@ -178,9 +179,9 @@ class NearestNeighborDistanceMetric(object):
         cost_matrix = np.zeros((len(targets), len(features)))
         for i, target in enumerate(targets):
             cost_matrix[i, :] = self._metric(self.samples[target], features)
-            print("cost_matrix:", cost_matrix.shape)
-            print("target len:", len(self.samples[target]))
-            print("targets feature shape:", self.samples[target][0].shape)
-            print("feature shape:", features.shape)
-        print("done cost matrix")
+            #print("cost_matrix:", cost_matrix.shape)
+            #print("target len:", len(self.samples[target]))
+            #print("targets feature shape:", self.samples[target][0].shape)
+            #print("feature shape:", features.shape)
+        #print("done cost matrix")
         return cost_matrix
