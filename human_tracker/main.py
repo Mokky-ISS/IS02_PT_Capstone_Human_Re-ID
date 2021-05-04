@@ -22,9 +22,9 @@ flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
 flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
 flags.DEFINE_boolean('db', True, 'save information in database')
 flags.DEFINE_boolean('trajectory', False, 'draw historical trajectories on every tracked human')
-flags.DEFINE_integer('skip_frame', 1, 'number of frame to be skipped')
+flags.DEFINE_integer('skip_frame', 30, 'number of frame to be skipped')
 flags.DEFINE_boolean('saliant_sampling', True, 'select and store unique frame only into database')
-flags.DEFINE_boolean('plot_graph', True, 'plot graph for soft threshold')
+flags.DEFINE_boolean('plot_graph', False, 'plot graph for soft threshold')
 
 def db_process():
     pass
@@ -77,10 +77,10 @@ def main(_argv):
 
     print("Start Multiprocessing..")
     # run new camera process
-    mps.new_job('camera_ch2', camera_capture, 2)
+    #mps.new_job('camera_ch2', camera_capture, 2)
     #mps.new_job('camera_ch3', camera_capture, 3)
     #mps.new_job('database_ps', db_process)
-    #mps.new_job('camera_ch15', camera_capture, 15)
+    mps.new_job('camera_ch15', camera_capture, 15)
 
     for j in mps.job:
         j.start()

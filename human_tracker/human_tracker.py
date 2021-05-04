@@ -74,7 +74,7 @@ def run_human_tracker(_argv):
     ## Increase the threshold will increase the tolerance to change the track id on a human.
     ## Refer non_max_suppression function in preprocessing.py.
     #max_cosine_distance = 0.4 (original value)
-    max_cosine_distance = 0.4
+    max_cosine_distance = 0.55
     # 0.55
 
     ## Number of features to store in every tracked human. 
@@ -87,11 +87,12 @@ def run_human_tracker(_argv):
     ## to ensure that only one detection box is assigned to one human.
     ## Refer non_max_suppression function in preprocessing.py.
     #nms_max_overlap = 1.0 (original value)
-    nms_max_overlap = 1.0 
+    nms_max_overlap = 0.75
     # 0.75 
 
     # Saliant sampling soft threshold
-    soft_thred = 0.01
+    soft_thred = 0.08
+    #soft_thred = 0.01
 
     # initialize deep sort
     model_filename = 'model_data/mars-small128.pb'
@@ -391,18 +392,19 @@ def run_human_tracker(_argv):
         frame_num += 1
         
         # plot graph for soft threshold
-        if bool(x_list) and bool(y_list) and FLAGS.plot_graph:
-            key_list = x_list.keys() & y_list.keys()
-            for k in key_list:  
-                ax.plot(x_list[k], y_list[k], label=k)
-                ax.set_yscale('log')
-            plt.xlabel('Frames')
-            plt.ylabel('Cosine Distance (log)')
-            plt.title('Soft threshold plot')
-            # line for soft threshold
-            plt.axhline(y=soft_thred, color='r', linestyle='-', label="Soft Threshold")
-            plt.legend(loc="upper left")
-            plt.pause(0.000001)
+        if FLAGS.plot_graph:
+            if bool(x_list) and bool(y_list):
+                key_list = x_list.keys() & y_list.keys()
+                for k in key_list:  
+                    ax.plot(x_list[k], y_list[k], label=k)
+                    ax.set_yscale('log')
+                plt.xlabel('Frames')
+                plt.ylabel('Cosine Distance (log)')
+                plt.title('Soft threshold plot')
+                # line for soft threshold
+                plt.axhline(y=soft_thred, color='r', linestyle='-', label="Soft Threshold")
+                plt.legend(loc="upper left")
+                plt.pause(0.000001)
         print("========================= END =========================\n")
     plt.savefig('soft_threshold.png')
     #plt.show()
