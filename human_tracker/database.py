@@ -40,7 +40,7 @@ class ImageDB(object):
 
     def get_timestamp(self):
         timestamp = datetime.datetime.now()
-        time_filename = datetime.datetime.now().strftime("%Y%m%dT%H%M")
+        time_filename = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
         return timestamp, time_filename
 
     def load_directory(self, path='.'):
@@ -77,7 +77,7 @@ class ImageDB(object):
     @_con_sqlite
     def insert_data(self, cam_id, track_id, patch_img, patch_np, patch_bbox, frame_num):
         timestamp, time_filename = self.get_timestamp()
-        img_id = str(cam_id) + '_' + str(track_id) + '_' + str(time_filename)
+        img_id = str(cam_id) + '_' + str(track_id) + '_' + str(time_filename) + '_' + str(frame_num)
         # change the input column data here
         col = ("img_id", "cam_id", "timestamp", "track_id", "patch_img", "patch_np", "patch_bbox", "frame_num")
         col_str = '('+', '.join(col) + ')'
