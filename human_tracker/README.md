@@ -4,7 +4,7 @@ In order to keep track of human existance within a certain area in the workspace
 <p align="center"><img src="data/helpers/deepsort.jpg" width="576"\></p>
 
 Repetitive human image samples is being produced after using the detection-tracking system. To ensure that the human image gallery does not include human image with similar view angle, a sampling method called Saliant Human Objects Selection (SHOS) is implemented to filter out unnecessary repetitive human images. Below shows the flow chart on how the SHOS works.
-<p align="center"><img src="data/helpers/shos.jpg" width="288"\></p>
+<p align="center"><img src="data/helpers/shos.jpg" width="384"\></p>
 
 
 
