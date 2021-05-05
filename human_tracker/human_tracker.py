@@ -56,7 +56,6 @@ def run_human_tracker(_argv):
     from tensorflow.python.saved_model import tag_constants
     import core.utils as utils
     from core.config import cfg
-    from core.yolov4 import filter_boxes
     # other packages
     import matplotlib.pyplot as plt
     import numpy as np
@@ -117,18 +116,10 @@ def run_human_tracker(_argv):
         video_path = int(FLAGS.video)
         print("Use webcam", video_path)
         print(type(video_path))
-    # load tflite model if flag is set
-    if FLAGS.framework == 'tflite':
-        interpreter = tf.lite.Interpreter(model_path=FLAGS.weights)
-        interpreter.allocate_tensors()
-        input_details = interpreter.get_input_details()
-        output_details = interpreter.get_output_details()
-        print(input_details)
-        print(output_details)
-    # otherwise load standard tensorflow saved model
-    else:
-        saved_model_loaded = tf.saved_model.load(FLAGS.weights, tags=[tag_constants.SERVING])
-        infer = saved_model_loaded.signatures['serving_default']
+    
+    # load model
+    saved_model_loaded = tf.saved_model.load(FLAGS.weights, tags=[tag_constants.SERVING])
+    infer = saved_model_loaded.signatures['serving_default']
 
     if FLAGS.db:
         img_db = ImageDB()
@@ -184,24 +175,12 @@ def run_human_tracker(_argv):
         image_data = image_data[np.newaxis, ...].astype(np.float32)
         start_time = time.time()
 
-        # run detections on tflite if flag is set
-        if FLAGS.framework == 'tflite':
-            interpreter.set_tensor(input_details[0]['index'], image_data)
-            interpreter.invoke()
-            pred = [interpreter.get_tensor(output_details[i]['index']) for i in range(len(output_details))]
-            # run detections using yolov3 if flag is set
-            if FLAGS.model == 'yolov3' and FLAGS.tiny == True:
-                boxes, pred_conf = filter_boxes(pred[1], pred[0], score_threshold=0.25,
-                                                input_shape=tf.constant([input_size, input_size]))
-            else:
-                boxes, pred_conf = filter_boxes(pred[0], pred[1], score_threshold=0.25,
-                                                input_shape=tf.constant([input_size, input_size]))
-        else:
-            batch_data = tf.constant(image_data)
-            pred_bbox = infer(batch_data)
-            for key, value in pred_bbox.items():
-                boxes = value[:, :, 0:4]
-                pred_conf = value[:, :, 4:]
+        # run detections
+        batch_data = tf.constant(image_data)
+        pred_bbox = infer(batch_data)
+        for key, value in pred_bbox.items():
+            boxes = value[:, :, 0:4]
+            pred_conf = value[:, :, 4:]
 
         boxes, scores, classes, valid_detections = tf.image.combined_non_max_suppression(
             boxes=tf.reshape(boxes, (tf.shape(boxes)[0], -1, 1, 4)),
@@ -416,4 +395,3 @@ if __name__ == '__main__':
         app.run(main)
     except SystemExit:
         pass
-loc="upper left"

@@ -6,7 +6,7 @@ from database import ImageDB
 from absl import app, flags, logging
 from absl.flags import FLAGS
 
-flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
+flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt)')
 flags.DEFINE_string('weights', './checkpoints/yolov4-416',
                     'path to weights file')
 flags.DEFINE_integer('size', 416, 'resize images to')
@@ -14,7 +14,7 @@ flags.DEFINE_boolean('tiny', False, 'yolo or yolo-tiny')
 flags.DEFINE_string('model', 'yolov4', 'yolov3 or yolov4')
 flags.DEFINE_string('video', './data/video/', 'path to input video or set to 0 for webcam')
 flags.DEFINE_string('output', './outputs/', 'path to output video')
-flags.DEFINE_string('output_format', 'XVID', 'codec used in VideoWriter when saving video to file')
+flags.DEFINE_string('output_format', 'MJPG', 'codec used in VideoWriter when saving video to file')
 flags.DEFINE_float('iou', 0.45, 'iou threshold')
 flags.DEFINE_float('score', 0.50, 'score threshold')
 flags.DEFINE_boolean('dont_show', False, 'dont show video output')
