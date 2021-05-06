@@ -28,6 +28,19 @@ pip install -r requirements-gpu.txt
 Make sure to use CUDA Toolkit version 10.1 as it is the proper version for the TensorFlow version used in this repository.
 https://developer.nvidia.com/cuda-10.1-download-archive-update2
 
+## Clone repo and set branch
+To clone this repo, use 'git clone', and set to 'human_tracker' branch.
+```bash
+# Clone repo
+git clone https://github.com/Mokky-ISS/IS02_PT_Capstone_Human_Re-ID.git
+
+# Change branch
+git checkout human_tracker
+
+# Change to right directory
+cd human_tracker
+```
+
 ## Setting weights file
 - Download the pre-trained yolov4.weights file at: https://drive.google.com/open?id=1cewMfusmPjYWbrnuJRuKhPMwRe_b9PaT
 - Copy and paste the yolov4.weights from your downloads folder into the 'data' folder of this repo.
@@ -73,7 +86,7 @@ Keep in mind that the more processes run together, the lower the fps of the data
 There is a chance that the overlapping issue will cause ID switching problem. It is recommended to use CCTV footages with top-down view angle to reduce human overlapping issue. 
 
 ### References  
-   Special thanks to theAIGuysCode, hunglc007 and nwojke for providing the methods for human detection and tracking:
+Special thanks to theAIGuysCode, hunglc007 and nwojke for providing the methods for human detection and tracking:
   * [Yolov4-Deepsort implementation](https://github.com/theAIGuysCode/yolov4-deepsort)
   * [tensorflow-yolov4-tflite](https://github.com/hunglc007/tensorflow-yolov4-tflite)
   * [Deep SORT Repository](https://github.com/nwojke/deep_sort)
