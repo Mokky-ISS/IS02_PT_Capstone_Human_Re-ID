@@ -38,6 +38,9 @@ class ImageDB(object):
         return inner
     #_con_sqlite = staticmethod(_con_sqlite)
 
+    def delete_dbfile(self):
+        os.remove(self.db_path)
+
     def get_timestamp(self):
         timestamp = datetime.datetime.now()
         time_filename = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")

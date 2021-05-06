@@ -123,6 +123,7 @@ def run_human_tracker(_argv):
 
     if FLAGS.db:
         img_db = ImageDB()
+        img_db.delete_dbfile()
         img_db.create_table()
 
     # begin video capture
@@ -165,7 +166,7 @@ def run_human_tracker(_argv):
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             image = Image.fromarray(frame)
         else:
-            print('Video has ended or failed, try a different video format!')
+            print('Video has ended.')
             break
         print("[cam %d] Frame #: %d" %(FLAGS.cam_id,frame_num))
 

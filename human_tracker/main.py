@@ -5,6 +5,7 @@ from human_tracker import camera_capture
 from database import ImageDB
 from absl import app, flags, logging
 from absl.flags import FLAGS
+import numpy as np
 
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt)')
 flags.DEFINE_string('weights', './checkpoints/yolov4-416',
@@ -25,6 +26,7 @@ flags.DEFINE_boolean('trajectory', False, 'draw historical trajectories on every
 flags.DEFINE_integer('skip_frame', 30, 'number of frame to be skipped')
 flags.DEFINE_boolean('saliant_sampling', True, 'select and store unique frame only into database')
 flags.DEFINE_boolean('plot_graph', False, 'plot graph for soft threshold')
+flags.DEFINE_integer('parallel_ps', 2, 'number of human tracker process to run')
 
 def db_process():
     pass
@@ -57,6 +59,15 @@ class MultiPs():
         t.daemon = True
         self.thread.append(t)
 
+def sequential_run(batch, mps):
+    mps.job.clear()
+    print("batch:", batch)
+    for ch in batch:
+        mps.new_job('camera_ch' + ch, camera_capture, int(ch))
+    for j in mps.job:
+        j.start()
+    for j in mps.job:
+        j.join()
 
 def main_single(_argv):
     # initialize database
@@ -75,18 +86,45 @@ def main(_argv):
     img_db = ImageDB()
     img_db.create_table()
 
+    # get video file info from video folder
+    vfile = os.listdir(FLAGS.video)
+    if len(vfile) == 0:
+        print("No files in the " + FLAGS.video)
+        return -1
+    ch_list = []
+    for f in vfile:
+        filename = os.path.splitext(f)[0]
+        if filename.split('ch')[0] == '' and filename.split('ch')[-1].isdigit() == True:
+            print(filename.split('ch')[-1])
+            ch_list.append(filename.split('ch')[-1])
+    if len(ch_list) == 0:
+        print("No video file with 'ch' name. Please rename your input video with 'ch[channel number].mp4'.")
+        return -1 
+    ch_list.sort(key = int)
+    ps_list = None
+    last_ps_num = len(ch_list)%FLAGS.parallel_ps
+    if last_ps_num != 0:
+        last_ps = ch_list[-last_ps_num:]
+        print("last_ps:", last_ps)
+        first_ps = ch_list[:-last_ps_num]
+        print("first_ps:", first_ps)
+        ps_list = np.asarray(first_ps).reshape(-1,FLAGS.parallel_ps).tolist()
+        ps_list.append(last_ps) 
+        print(ps_list)
+    else:
+        ps_list = np.asarray(ch_list).reshape(-1,FLAGS.parallel_ps).tolist()
+        print(ps_list)
+
     print("Start Multiprocessing..")
     # run new camera process
-    #mps.new_job('camera_ch2', camera_capture, 2)
-    #mps.new_job('camera_ch3', camera_capture, 3)
+    for batch in ps_list:
+        sequential_run(batch, mps)
+
     #mps.new_job('database_ps', db_process)
-    mps.new_job('camera_ch15', camera_capture, 15)
-
-    for j in mps.job:
-        j.start()
-
-    for j in mps.job:
-        j.join()
+    #for j in mps.job:
+    #    j.start()
+    #for j in mps.job:
+    #    j.join()
 
     print("End of program.")
 
