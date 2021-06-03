@@ -237,6 +237,13 @@ def run_human_tracker(_argv):
         bboxes = np.delete(bboxes, deleted_indx, axis=0)
         scores = np.delete(scores, deleted_indx, axis=0)
 
+        # filter blur boxes
+        #bbox_size_threshold =  
+        print("bboxes:", bboxes)
+        print("boxes type:", type(bboxes[0][0]))
+        print("original_h:", original_h)
+        print("original_w:", original_w)
+
         # encode yolo detections and feed to tracker
         features = encoder(frame, bboxes)
         detections = [Detection(bbox, score, class_name, feature) for bbox, score, class_name, feature in zip(bboxes, scores, names, features)]

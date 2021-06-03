@@ -69,28 +69,7 @@ def sequential_run(batch, mps):
     for j in mps.job:
         j.join()
 
-def main_single(_argv):
-    # initialize database
-    img_db = ImageDB()
-    img_db.create_table()
-    camera_capture(2)
-
-
-def main(_argv):
-    mps = MultiPs()
-
-    # mps.log_msg()
-    print("Parent Process PID: " + str(os.getpid()))
-    print("Initialize database..")
-    # initialize database
-    img_db = ImageDB()
-    img_db.create_table()
-
-    # get video file info from video folder
-    vfile = os.listdir(FLAGS.video)
-    if len(vfile) == 0:
-        print("No files in the " + FLAGS.video)
-        return -1
+def create_ps_list(vfile):
     ch_list = []
     for f in vfile:
         filename = os.path.splitext(f)[0]
@@ -113,7 +92,34 @@ def main(_argv):
         print(ps_list)
     else:
         ps_list = np.asarray(ch_list).reshape(-1,FLAGS.parallel_ps).tolist()
-        print(ps_list)
+        print(ps_list)    
+
+    return ps_list
+
+def main_single(_argv):
+    # initialize database
+    img_db = ImageDB()
+    img_db.create_table()
+    camera_capture(2)
+
+
+def main(_argv):
+    mps = MultiPs()
+
+    # mps.log_msg()
+    print("Parent Process PID: " + str(os.getpid()))
+    print("Initialize database..")
+    # initialize database
+    img_db = ImageDB()
+    img_db.create_table()
+
+    # get video file info from video folder
+    vfile = os.listdir(FLAGS.video)
+    if len(vfile) == 0:
+        print("No files in the " + FLAGS.video)
+        return -1
+        
+    ps_list = create_ps_list(vfile)
 
     print("Start Multiprocessing..")
     # run new camera process
