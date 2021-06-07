@@ -134,4 +134,5 @@ dmypy.json
 *.avi
 *.gif
 *.db
+*.jpg
 checkpoints/

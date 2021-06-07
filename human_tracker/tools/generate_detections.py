@@ -6,11 +6,12 @@ import numpy as np
 import cv2
 import tensorflow.compat.v1 as tf
 
-#tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_eager_execution()
 
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
 
 def _run_in_batches(f, data_dict, out, batch_size):
     data_len = len(out)
@@ -69,10 +70,13 @@ def extract_image_patch(image, bbox, patch_shape):
         return None
     sx, sy, ex, ey = bbox
     image = image[sy:ey, sx:ex]
+    # Resize the image patches to constant dimension
     image = cv2.resize(image, tuple(patch_shape[::-1]))
     return image
 
 # extract single patch from a bounding box
+
+
 def get_img_patch(image, box, aspect_ratio=0.5, image_width=64):
     image_patches = []
     # image_shape = [height, width], where height = width/aspect_ratio
@@ -83,7 +87,7 @@ def get_img_patch(image, box, aspect_ratio=0.5, image_width=64):
         print("WARNING: Failed to extract image patch: %s." % str(box))
         patch = np.random.uniform(
             0., 255., image_shape).astype(np.uint8)
-    return patch    
+    return patch
 
 
 class ImageEncoder(object):

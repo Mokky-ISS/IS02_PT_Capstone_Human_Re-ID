@@ -12,9 +12,10 @@ class ImageDB(object):
         self.conn = None
         self.cursor = None
         self.db_path = "./database/Image.db"
+        #self.db_path = "./database/Image_complete.db"
         self.table_name = "VectorKB_Table"
         # change the default column title here
-        self.col_titles = "(img_id INT, cam_id INT, timestamp TIMESTAMP, track_id INT, patch_img BLOB, patch_np array, patch_bbox array, frame_num INT)"
+        self.col_titles = "(img_id INT, cam_id INT, timestamp TIMESTAMP, track_id INT, patch_img BLOB, patch_np array, patch_bbox array, frame_num INT, img_res_width INT, img_res_height INT)"
         self.data = None
         self.image_name = []
         # Converts np.array to TEXT when inserting
@@ -39,7 +40,8 @@ class ImageDB(object):
     #_con_sqlite = staticmethod(_con_sqlite)
 
     def delete_dbfile(self):
-        os.remove(self.db_path)
+        if os.path.isfile(self.db_path):
+            os.remove(self.db_path)
 
     def get_timestamp(self):
         timestamp = datetime.datetime.now()
@@ -78,11 +80,11 @@ class ImageDB(object):
         self.cursor.execute(command)
 
     @_con_sqlite
-    def insert_data(self, cam_id, track_id, patch_img, patch_np, patch_bbox, frame_num):
+    def insert_data(self, cam_id, track_id, patch_img, patch_np, patch_bbox, frame_num, img_res_width, img_res_height):
         timestamp, time_filename = self.get_timestamp()
         img_id = str(cam_id) + '_' + str(track_id) + '_' + str(time_filename) + '_' + str(frame_num)
         # change the input column data here
-        col = ("img_id", "cam_id", "timestamp", "track_id", "patch_img", "patch_np", "patch_bbox", "frame_num")
+        col = ("img_id", "cam_id", "timestamp", "track_id", "patch_img", "patch_np", "patch_bbox", "frame_num", "img_res_width", "img_res_height")
         col_str = '('+', '.join(col) + ')'
         command = ' '.join(("INSERT INTO", self.table_name, col_str, "VALUES (", ','.join(('?'*len(col))), ")"))
         print(command, col_str)
@@ -144,16 +146,47 @@ def get_image():
         f.write(row[0])
 
 
+def get_patch_np(id_num):
+    img_db = ImageDB()
+    img_db.fetch_data("patch_np", "img_id")
+    row = img_db.data[id_num-1]
+    return row[0], row[1]
+
+
 def reid_table():
     img_db = ImageDB()
     # add new reid table here
     img_db.create_table(table_name="Inference_Table", col_titles="(img_id INT, cam_id INT, timestamp TIMESTAMP, track_id INT)")
 
+# check for blur image
+
+
+def list_blur_data():
+    img_db = ImageDB()
+    img_db.fetch_data()
+    # blur images
+    for i in []:
+        row = img_db.data[i-1]
+        print("img_id:", row[0], type(row[0]))
+        print("patch_bbox:", row[6], type(row[6]))
+        print("\n")
+        with open("./database/img/{}.jpg".format(row[0]), "wb") as f:
+            f.write(row[4])
+    print("======================================")
+    # non blur images
+    for i in [9]:
+        row = img_db.data[i-1]
+        print("img_id:", row[0], type(row[0]))
+        print("patch_bbox:", row[6], type(row[6]))
+        print("\n")
+        with open("./database/img/{}.jpg".format(row[0]), "wb") as f:
+            f.write(row[4])
+
 
 # UNCOMMEND THE MAIN FUNCTIONS TO TEST THEM OUT
 if __name__ == "__main__":
     # pass
-    # list_data()
+    list_blur_data()
     # query_data()
     # get_image()
-    reid_table()
+    # reid_table()

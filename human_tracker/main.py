@@ -28,6 +28,7 @@ flags.DEFINE_boolean('saliant_sampling', True, 'select and store unique frame on
 flags.DEFINE_boolean('plot_graph', False, 'plot graph for soft threshold')
 flags.DEFINE_integer('parallel_ps', 2, 'number of human tracker process to run')
 
+
 def db_process():
     pass
     #db = ImageDB()
@@ -59,6 +60,7 @@ class MultiPs():
         t.daemon = True
         self.thread.append(t)
 
+
 def sequential_run(batch, mps):
     mps.job.clear()
     print("batch:", batch)
@@ -69,6 +71,7 @@ def sequential_run(batch, mps):
     for j in mps.job:
         j.join()
 
+
 def create_ps_list(vfile):
     ch_list = []
     for f in vfile:
@@ -78,23 +81,24 @@ def create_ps_list(vfile):
             ch_list.append(filename.split('ch')[-1])
     if len(ch_list) == 0:
         print("No video file with 'ch' name. Please rename your input video with 'ch[channel number].mp4'.")
-        return -1 
-    ch_list.sort(key = int)
+        return -1
+    ch_list.sort(key=int)
     ps_list = None
-    last_ps_num = len(ch_list)%FLAGS.parallel_ps
+    last_ps_num = len(ch_list) % FLAGS.parallel_ps
     if last_ps_num != 0:
         last_ps = ch_list[-last_ps_num:]
         print("last_ps:", last_ps)
         first_ps = ch_list[:-last_ps_num]
         print("first_ps:", first_ps)
-        ps_list = np.asarray(first_ps).reshape(-1,FLAGS.parallel_ps).tolist()
-        ps_list.append(last_ps) 
+        ps_list = np.asarray(first_ps).reshape(-1, FLAGS.parallel_ps).tolist()
+        ps_list.append(last_ps)
         print(ps_list)
     else:
-        ps_list = np.asarray(ch_list).reshape(-1,FLAGS.parallel_ps).tolist()
-        print(ps_list)    
+        ps_list = np.asarray(ch_list).reshape(-1, FLAGS.parallel_ps).tolist()
+        print(ps_list)
 
     return ps_list
+
 
 def main_single(_argv):
     # initialize database
@@ -111,6 +115,7 @@ def main(_argv):
     print("Initialize database..")
     # initialize database
     img_db = ImageDB()
+    img_db.delete_dbfile()
     img_db.create_table()
 
     # get video file info from video folder
@@ -118,7 +123,7 @@ def main(_argv):
     if len(vfile) == 0:
         print("No files in the " + FLAGS.video)
         return -1
-        
+
     ps_list = create_ps_list(vfile)
 
     print("Start Multiprocessing..")
@@ -127,9 +132,9 @@ def main(_argv):
         sequential_run(batch, mps)
 
     #mps.new_job('database_ps', db_process)
-    #for j in mps.job:
+    # for j in mps.job:
     #    j.start()
-    #for j in mps.job:
+    # for j in mps.job:
     #    j.join()
 
     print("End of program.")

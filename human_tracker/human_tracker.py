@@ -1,4 +1,4 @@
-## UNCOMMEND THESE FLAGS IF YOU WANT TO DIRECTLY RUN THIS CODE USING python human_tracker.py
+# UNCOMMEND THESE FLAGS IF YOU WANT TO DIRECTLY RUN THIS CODE USING python human_tracker.py
 # flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt')
 # flags.DEFINE_string('weights', './checkpoints/yolov4-416',
 #                     'path to weights file')
@@ -18,7 +18,7 @@
 # flags.DEFINE_boolean('db', True, 'save information in database')
 
 ###
-# Note: Attempt to import packages here will cause CUDA ERROR, as parent process (main.py) will call this script 
+# Note: Attempt to import packages here will cause CUDA ERROR, as parent process (main.py) will call this script
 # and import packages into parent process instead of child process.
 ###
 
@@ -27,6 +27,8 @@ from absl.flags import FLAGS
 from absl import app, flags, logging
 
 # child process from main.py
+
+
 def camera_capture(cam_id):
     # assign camera id into new camera process.
     flags.DEFINE_integer('cam_id', cam_id, 'camera ID to run on different camera')
@@ -34,13 +36,16 @@ def camera_capture(cam_id):
         app.run(run_human_tracker)
     except SystemExit:
         pass
-        
+
+
 def run_human_tracker(_argv):
-    # Every neccessary packages must be imported within the child process instead of parent process, 
+    # Every neccessary packages must be imported within the child process instead of parent process,
     # to avoid error of "could not retrieve CUDA device count: CUDA_ERROR_NOT_INITIALIZED: initialization error"
 
     # export to database
     from database import ImageDB
+    # check human pose
+    from pose_estimation import check_pose
     # deep sort imports
     from tools import generate_detections as gdet
     from deep_sort.tracker import Tracker
@@ -68,26 +73,26 @@ def run_human_tracker(_argv):
     physical_devices = tf.config.experimental.list_physical_devices('GPU')
     if len(physical_devices) > 0:
         tf.config.experimental.set_memory_growth(physical_devices[0], True)
-        
-    ## Increase max_cosine_distance variable to reduce identity switching. 
-    ## Increase the threshold will increase the tolerance to change the track id on a human.
-    ## Refer non_max_suppression function in preprocessing.py.
-    #max_cosine_distance = 0.4 (original value)
+
+    # Increase max_cosine_distance variable to reduce identity switching.
+    # Increase the threshold will increase the tolerance to change the track id on a human.
+    # Refer non_max_suppression function in preprocessing.py.
+    # max_cosine_distance = 0.4 (original value)
     max_cosine_distance = 0.55
     # 0.55
 
-    ## Number of features to store in every tracked human. 
-    ## Refer partial_fit function in nn_matching.py. 
+    # Number of features to store in every tracked human.
+    # Refer partial_fit function in nn_matching.py.
     #nn_budget = None
     nn_budget = 1000
 
-    ## Reduce this variable to reduce identity switching. 
-    ## This will only reduce overlap detections within one frame, 
-    ## to ensure that only one detection box is assigned to one human.
-    ## Refer non_max_suppression function in preprocessing.py.
-    #nms_max_overlap = 1.0 (original value)
+    # Reduce this variable to reduce identity switching.
+    # This will only reduce overlap detections within one frame,
+    # to ensure that only one detection box is assigned to one human.
+    # Refer non_max_suppression function in preprocessing.py.
+    # nms_max_overlap = 1.0 (original value)
     nms_max_overlap = 0.75
-    # 0.75 
+    # 0.75
 
     # Saliant sampling soft threshold
     soft_thred = 0.08
@@ -116,15 +121,15 @@ def run_human_tracker(_argv):
         video_path = int(FLAGS.video)
         print("Use webcam", video_path)
         print(type(video_path))
-    
+
     # load model
     saved_model_loaded = tf.saved_model.load(FLAGS.weights, tags=[tag_constants.SERVING])
     infer = saved_model_loaded.signatures['serving_default']
 
     if FLAGS.db:
         img_db = ImageDB()
-        img_db.delete_dbfile()
-        img_db.create_table()
+        # img_db.delete_dbfile()
+        # img_db.create_table()
 
     # begin video capture
     try:
@@ -146,7 +151,7 @@ def run_human_tracker(_argv):
         out = cv2.VideoWriter(output_path, codec, fps, (width, height))
         print('output_path:', output_path)
 
-    # Dictionary for historical trajectory points 
+    # Dictionary for historical trajectory points
     h_pts = {}
     #h_pts = [deque(maxlen=30) for _ in range(1000)]
 
@@ -157,7 +162,7 @@ def run_human_tracker(_argv):
         fig = plt.figure()
         # 1x1 grid, first subplot
         ax = fig.add_subplot(1, 1, 1)
-    
+
     frame_num = 0
     # while video is running
     while True:
@@ -168,7 +173,7 @@ def run_human_tracker(_argv):
         else:
             print('Video has ended.')
             break
-        print("[cam %d] Frame #: %d" %(FLAGS.cam_id,frame_num))
+        print("[cam %d] Frame #: %d" % (FLAGS.cam_id, frame_num))
 
         frame_size = frame.shape[:2]
         image_data = cv2.resize(frame, (input_size, input_size))
@@ -238,15 +243,17 @@ def run_human_tracker(_argv):
         scores = np.delete(scores, deleted_indx, axis=0)
 
         # filter blur boxes
-        #bbox_size_threshold =  
-        print("bboxes:", bboxes)
-        print("boxes type:", type(bboxes[0][0]))
-        print("original_h:", original_h)
-        print("original_w:", original_w)
+        bbox_width_threshold = 60
+        bbox_height_threshold = 120
+
+        #print("bboxes:", bboxes)
+        #print("original_h:", original_h)
+        #print("original_w:", original_w)
 
         # encode yolo detections and feed to tracker
         features = encoder(frame, bboxes)
-        detections = [Detection(bbox, score, class_name, feature) for bbox, score, class_name, feature in zip(bboxes, scores, names, features)]
+        detections = [Detection(bbox, score, class_name, feature) for bbox, score, class_name, feature in zip(
+            bboxes, scores, names, features) if bbox[2] > bbox_width_threshold and bbox[3] > bbox_height_threshold]
 
         # initialize color map
         cmap = plt.get_cmap('tab20b')
@@ -261,7 +268,7 @@ def run_human_tracker(_argv):
 
         # Call the tracker
         tracker.predict()
-        tracker.update(detections)   
+        tracker.update(detections)
 
         if FLAGS.plot_graph:
             ax.clear()
@@ -277,14 +284,14 @@ def run_human_tracker(_argv):
             class_name = track.get_class()
 
             # update database
-            # skip frame is done here to extract less data for database, if overall FPS for videocapture is reduced to one, tracker wont work. 
-            if FLAGS.db and frame_num % FLAGS.skip_frame == 0:  
+            # skip frame is done here to extract less data for database, if overall FPS for videocapture is reduced to one, tracker wont work.
+            if FLAGS.db and frame_num % FLAGS.skip_frame == 0:
                 # Saliant sampling
                 print("=================================================")
-                print("Active targets: ", end =" ")
+                print("Active targets: ", end=" ")
                 dist = None
                 for sample_id, features in tracker.metric.samples.items():
-                    print(sample_id, len(features), ";", end =" ")
+                    print(sample_id, len(features), ";", end=" ")
                     if sample_id != track.track_id:
                         continue
                     last_feat = []
@@ -296,12 +303,12 @@ def run_human_tracker(_argv):
                         #print("store_feats:", tracker.metric.store_feats[sample_id][0].shape)
                         dist = nn_matching._cosine_distance(np.asarray(last_feat), np.asarray(tracker.metric.store_feats[sample_id]))
                         # if dist is more than soft threshold, the track would have the same human with different view
-                        if dist[0,0] > soft_thred:
+                        if dist[0, 0] > soft_thred:
                             track.unique_same_human = True
                         # store the lastest feature into store_feats
                         tracker.metric.store_feats[sample_id] = [features[-1]]
                     else:
-                        tracker.metric.store_feats.setdefault(sample_id, []).append(features[-1])  
+                        tracker.metric.store_feats.setdefault(sample_id, []).append(features[-1])
                         #print("unique_same_human:", sample_id)
                         track.unique_same_human = True
                 print('\n')
@@ -309,33 +316,35 @@ def run_human_tracker(_argv):
                 if dist is not None and FLAGS.plot_graph:
                     trk_id = track.track_id
                     print("current track_id:", trk_id)
-                    print("dist:", dist[0,0])
+                    print("dist:", dist[0, 0])
                     x_list.setdefault(trk_id, []).append(frame_num)
-                    y_list.setdefault(trk_id, []).append(dist[0,0])
+                    y_list.setdefault(trk_id, []).append(dist[0, 0])
                     print("x_list:", x_list[trk_id])
                     print("y_list:", y_list[trk_id])
                     print("x len:", len(x_list[trk_id]))
                     print("y len:", len(y_list[trk_id]))
                     #ax.plot(x_list[trk_id], y_list[trk_id], label=trk_id)
-                    #ax.set_yscale('log')
-                
+                    # ax.set_yscale('log')
 
                 # Record unique frame only into database
                 if track.unique_same_human == True or not FLAGS.saliant_sampling:
                     print("======== DATABASE =========")
                     print("record track_id:", track.track_id)
-                    # single patch box
+                    # single patch box (patch_bbox is obtained from DeepSort without 0.5 aspect ratio)
                     patch_bbox = track.to_tlwh()
                     patch_np = gdet.get_img_patch(patch_frame, patch_bbox)
                     patch_np = cv2.cvtColor(patch_np, cv2.COLOR_RGB2BGR)
+                    # Check for human image using Pose estimation
+                    b_pose = check_pose(patch_np, track.track_id)
                     # https://jdhao.github.io/2019/07/06/python_opencv_pil_image_to_bytes/
                     is_success, im_buf_arr = cv2.imencode(".jpg", patch_np)
                     patch_img = im_buf_arr.tobytes()
 
-                    # export data to database
-                    img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np, patch_bbox, frame_num)
-                    #print("Data Type:", type(frame_num),type(track.track_id),type(patch_img),type(patch_bbox))
-                    
+                    if b_pose:
+                        # export data to database
+                        img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np, patch_bbox, frame_num, original_w, original_h)
+                        #print("Data Type:", type(frame_num),type(track.track_id),type(patch_img),type(patch_bbox))
+
                     # Reset unique_same_human bool state
                     track.unique_same_human = False
 
@@ -349,7 +358,7 @@ def run_human_tracker(_argv):
 
             # draw historical trajectory
             if FLAGS.trajectory:
-                center = (int((bbox[0]+ bbox[2])/2), int((bbox[1]+ bbox[3])/2))
+                center = (int((bbox[0] + bbox[2])/2), int((bbox[1] + bbox[3])/2))
                 h_pts.setdefault(track.track_id, deque(maxlen=30)).append(center)
                 for j in range(1, len(h_pts[track.track_id])):
                     if h_pts[track.track_id][j-1] is None or h_pts[track.track_id][j] is None:
@@ -377,12 +386,12 @@ def run_human_tracker(_argv):
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
         frame_num += 1
-        
+
         # plot graph for soft threshold
         if FLAGS.plot_graph:
             if bool(x_list) and bool(y_list):
                 key_list = x_list.keys() & y_list.keys()
-                for k in key_list:  
+                for k in key_list:
                     ax.plot(x_list[k], y_list[k], label=k)
                     ax.set_yscale('log')
                 plt.xlabel('Frames')
@@ -394,7 +403,7 @@ def run_human_tracker(_argv):
                 plt.pause(0.000001)
         print("========================= END =========================\n")
     plt.savefig('soft_threshold.png')
-    #plt.show()
+    # plt.show()
     cv2.destroyAllWindows()
 
 
