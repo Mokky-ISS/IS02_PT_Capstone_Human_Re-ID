@@ -70,7 +70,7 @@ def check_pose(img_patch, id):
             min_detection_confidence=0.9) as pose:
         #img_patch = cv2.imread("./database/img/3_U5ZE_20210607T131744_210.jpg")
         if test_image_from_db:
-            img_patch, img_id = get_patch_np(9)
+            img_patch, img_id = get_patch_np(3)
             print("img_id:", img_id)
         image_height, image_width, _ = img_patch.shape
         # Convert the BGR image to RGB before processing.
@@ -83,20 +83,20 @@ def check_pose(img_patch, id):
         # Also check for the left and right hip angles to make sure the person is in standing mode.
         # Note: Does not need to check for shoulders as we only need the full height images.
         # https://google.github.io/mediapipe/solutions/pose.html#static_image_mode
-        head = list(range(0, 11))
+        head = list(range(0, 7))
         ankles = list(range(27, 29))
         body = [11, 12, 23, 24]
-        b_head = False
-        b_ankle = False
+        b_head = True
+        b_ankle = True
         b_body = True
         b_hip = False
         for h in head:
-            if results.pose_landmarks.landmark[h].visibility > 0.7:
-                b_head = True
+            if results.pose_landmarks.landmark[h].visibility < 0.7:
+                b_head = False
                 break
         for a in ankles:
-            if results.pose_landmarks.landmark[a].visibility > 0.7:
-                b_ankle = True
+            if results.pose_landmarks.landmark[a].visibility < 0.7:
+                b_ankle = False
                 break
         for b in body:
             # if the landmark is out of range in x-axis
@@ -153,32 +153,3 @@ def check_pose(img_patch, id):
 if __name__ == "__main__":
     # check_pose_manual()
     print("bool:", check_pose("test", "Test"))
-# # For webcam input:
-# cap = cv2.VideoCapture(0)
-# with mp_pose.Pose(
-#         min_detection_confidence=0.5,
-#         min_tracking_confidence=0.5) as pose:
-#     while cap.isOpened():
-#         success, image = cap.read()
-#         if not success:
-#             print("Ignoring empty camera frame.")
-#             # If loading a video, use 'break' instead of 'continue'.
-#             continue
-
-#         # Flip the image horizontally for a later selfie-view display, and convert
-#         # the BGR image to RGB.
-#         image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
-#         # To improve performance, optionally mark the image as not writeable to
-#         # pass by reference.
-#         image.flags.writeable = False
-#         results = pose.process(image)
-
-#         # Draw the pose annotation on the image.
-#         image.flags.writeable = True
-#         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-#         mp_drawing.draw_landmarks(
-#             image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-#         cv2.imshow('MediaPipe Pose', image)
-#         if cv2.waitKey(5) & 0xFF == 27:
-#             break
-# cap.release()

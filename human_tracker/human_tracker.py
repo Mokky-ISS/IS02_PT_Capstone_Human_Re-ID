@@ -69,10 +69,28 @@ def run_human_tracker(_argv):
     from collections import deque
 
     # comment out below line to enable tensorflow logging outputs
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    physical_devices = tf.config.experimental.list_physical_devices('GPU')
-    if len(physical_devices) > 0:
-        tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    # physical_devices = tf.config.experimental.list_physical_devices('GPU')
+    # print("physical device:", physical_devices)
+    # if len(physical_devices) > 0:
+    #     tf.config.experimental.set_memory_growth(physical_devices[0], True)
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        try:
+            # Currently, memory growth needs to be the same across GPUs
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+                # tf.config.experimental.set_virtual_device_configuration(
+                #     gpu,
+                #     [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
+                logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+                print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+                print(gpus)
+                print(logical_gpus)
+        except RuntimeError as e:
+            # Memory growth must be set before GPUs have been initialized
+            print(e)
+    #mirrored_strategy = tf.distribute.MirroredStrategy(devices=["/gpu:0"])
 
     # Increase max_cosine_distance variable to reduce identity switching.
     # Increase the threshold will increase the tolerance to change the track id on a human.
@@ -108,8 +126,13 @@ def run_human_tracker(_argv):
 
     # load configuration for object detector
     config = ConfigProto()
+    #config.gpu_options.per_process_gpu_memory_fraction = 0.2
     config.gpu_options.allow_growth = True
     session = InteractiveSession(config=config)
+    devices = session.list_devices()
+    print("Session devices: ")
+    for d in devices:
+        print(d.name)
     STRIDES, ANCHORS, NUM_CLASS, XYSCALE = utils.load_config(FLAGS)
     input_size = FLAGS.size
     video_path = None
@@ -182,6 +205,9 @@ def run_human_tracker(_argv):
         start_time = time.time()
 
         # run detections
+        # with mirrored_strategy.scope():
+        # try:
+        # with tf.device('/device:GPU:0'):
         batch_data = tf.constant(image_data)
         pred_bbox = infer(batch_data)
         for key, value in pred_bbox.items():
@@ -197,6 +223,8 @@ def run_human_tracker(_argv):
             iou_threshold=FLAGS.iou,
             score_threshold=FLAGS.score
         )
+        # except RuntimeError as e:
+        #     print(e)
 
         # convert data to numpy arrays and slice out unused elements
         num_objects = valid_detections.numpy()[0]
