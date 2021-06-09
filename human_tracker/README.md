@@ -6,6 +6,10 @@ In order to keep track of human existance within a certain area in the workspace
 Repetitive human image samples is being produced after using the detection-tracking system. To ensure that the human image gallery does not include human image with similar view angle, a sampling method called Saliant Human Objects Selection (SHOS) is implemented to filter out unnecessary repetitive human images. Below shows the flow chart on how the SHOS works.
 <p align="center"><img src="data/helpers/shos.jpg" width="384"\></p>
 
+## Update 6 June
+- At root folder (human_tracker folder), run "git pull" to retrieve new code.  
+- Please run "pip install -r requirements-gpu.txt" again to install mediapipe package. 
+
 ## Installation
 
 For Windows OS, open your command prompt. For Ubuntu, open your terminal.
@@ -53,32 +57,32 @@ python save_model.py --model yolov4
 ```
 
 ## Run the human detection-tracking system
-To run the human detection-tracking system, run the human_tracker.py. Remember to place ALL of the CCTV footages in the default folder at /data/video. Rename the video file according to the camera channel. For example, video captured by camera channel 2 is renamed as "ch2.mp4", channel 3 as "ch3.mp4". These files should be in the ./data/video folder by default.
+To run the human detection-tracking system, run the main.py. Remember to place ALL of the CCTV footages in the default folder at /data/video. Rename the video file according to the camera channel. For example, video captured by camera channel 2 is renamed as "ch2.mp4", channel 3 as "ch3.mp4". These files should be in the ./data/video folder by default.
 - Default location of the input video is at /data/video folder.
 - Default location of the output file is at /output folder. 
  
 ```bash
 # Run the system with default settings
-python human_tracker.py
+python main.py
 
 # Run the system with different input and output video path 
-python human_tracker.py --video ./path/to/video/input.mp4 --output ./path/to/video/output.mp4
+python main.py --video ./path/to/video/input.mp4 --output ./path/to/video/output.mp4
 
 # Run the system with trajectory
-python human_tracker.py --trajectory True
+python main.py --trajectory True
 
 # Run the system with SHOS graph
-python human_tracker.py --plot_graph True
+python main.py --plot_graph True
 
 ```
 ## Database 
-The database file path is at ./database/Image.db. Every time the human_tracker.py is executed, the Image.db file will be deleted and a new Image.db will be created to store new data. Make sure the human_tracker.py execution is not interrupted halftway as there is no checkpoint saved. Will add the checkpoint function in future if needed. 
+The database file path is at ./database/Image.db. Every time the main.py is executed, the Image.db file will be deleted and a new Image.db will be created to store new data. Make sure the main.py execution is not interrupted halftway as there is no checkpoint saved. Will add the checkpoint function in future if needed. 
 
 ## Multiprocessing
 To set the number of processes to run in parallel, use the following command.
 ```bash
 # Run two process in every batch
-python human_tracker.py --parallel_ps 2
+python main.py --parallel_ps 2
 ```
 Keep in mind that the more processes run together, the lower the fps of the data extraction from the detection-tracking system. 
 
