@@ -77,6 +77,9 @@ python main.py --trajectory True
 # Run the system with SHOS graph
 python main.py --plot_graph True
 
+# Run the system in real time using webcam
+python main.py --video 0
+
 ```
 ## Database 
 The database file path is at ./database/Image.db. Every time the main.py is executed, the Image.db file will be deleted and a new Image.db will be created to store new data. Make sure the main.py execution is not interrupted halftway as there is no checkpoint saved. Will add the checkpoint function in future if needed. 

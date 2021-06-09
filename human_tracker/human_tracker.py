@@ -376,13 +376,14 @@ def run_human_tracker(_argv):
                     # Reset unique_same_human bool state
                     track.unique_same_human = False
 
-            # draw bbox on screen
-            color_num = ''.join(str(ord(c)) for c in track.track_id)
-            color = colors[int(color_num) % len(colors)]
-            color = [i * 255 for i in color]
-            cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
-            cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*17, int(bbox[1])), color, -1)
-            cv2.putText(frame, class_name + "-" + str(track.track_id), (int(bbox[0]), int(bbox[1]-10)), 0, 0.75, (255, 255, 255), 2)
+            if not FLAGS.dont_show:
+                # draw bbox on screen
+                color_num = ''.join(str(ord(c)) for c in track.track_id)
+                color = colors[int(color_num) % len(colors)]
+                color = [i * 255 for i in color]
+                cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
+                cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0])+(len(class_name)+len(str(track.track_id)))*17, int(bbox[1])), color, -1)
+                cv2.putText(frame, class_name + "-" + str(track.track_id), (int(bbox[0]), int(bbox[1]-10)), 0, 0.75, (255, 255, 255), 2)
 
             # draw historical trajectory
             if FLAGS.trajectory:
@@ -432,6 +433,8 @@ def run_human_tracker(_argv):
         print("========================= END =========================\n")
     plt.savefig('soft_threshold.png')
     # plt.show()
+    vid.release()
+    out.release()
     cv2.destroyAllWindows()
 
 

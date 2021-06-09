@@ -61,6 +61,15 @@ class MultiPs():
         self.thread.append(t)
 
 
+def cam_stream(mps):
+    mps.job.clear()
+    mps.new_job('camera_ch' + FLAGS.video, camera_capture, int(FLAGS.video))
+    for j in mps.job:
+        j.start()
+    for j in mps.job:
+        j.join()
+
+
 def sequential_run(batch, mps):
     mps.job.clear()
     print("batch:", batch)
@@ -118,19 +127,21 @@ def main(_argv):
     img_db.delete_dbfile()
     img_db.create_table()
 
-    # get video file info from video folder
-    vfile = os.listdir(FLAGS.video)
-    if len(vfile) == 0:
-        print("No files in the " + FLAGS.video)
-        return -1
+    if not FLAGS.video.isdigit():
+        # get video file info from video folder
+        vfile = os.listdir(FLAGS.video)
+        if len(vfile) == 0:
+            print("No files in the " + FLAGS.video)
+            return -1
 
-    ps_list = create_ps_list(vfile)
+        ps_list = create_ps_list(vfile)
 
-    print("Start Multiprocessing..")
-    # run new camera process
-    for batch in ps_list:
-        sequential_run(batch, mps)
-
+        print("Start Multiprocessing..")
+        # run new camera process
+        for batch in ps_list:
+            sequential_run(batch, mps)
+    else:
+        cam_stream(mps)
     #mps.new_job('database_ps', db_process)
     # for j in mps.job:
     #    j.start()
