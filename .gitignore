@@ -135,4 +135,5 @@ dmypy.json
 *.gif
 *.db
 *.jpg
+!**/helpers/*.jpg
 checkpoints/
