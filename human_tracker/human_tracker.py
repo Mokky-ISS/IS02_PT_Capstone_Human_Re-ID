@@ -37,10 +37,11 @@ def camera_capture(cam_id):
     except SystemExit:
         pass
 
-def run_human_tracker(_argv):
+
+def run_human_tracker_1(_argv):
     import time
     import os
-    import cv2 
+    import cv2
 
     vid_name = 'ch' + str(FLAGS.cam_id) + '.mp4'
     video_path = os.path.join(FLAGS.video, vid_name)
@@ -50,12 +51,13 @@ def run_human_tracker(_argv):
     while (True):
         ret, frame = vid.read()
         cv2.imshow("camCapture", frame)
-        #time.sleep(0.1)
+        # time.sleep(0.1)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cap.release()
 
-def run_human_tracker_1(_argv):
+
+def run_human_tracker(_argv):
     # Every neccessary packages must be imported within the child process instead of parent process,
     # to avoid error of "could not retrieve CUDA device count: CUDA_ERROR_NOT_INITIALIZED: initialization error"
 
