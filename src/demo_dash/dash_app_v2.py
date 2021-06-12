@@ -6,8 +6,8 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
-from src.demo_dash import header_v2 as header
-from src.database import query_image, query_re_id
+from demo_dash import header_v2 as header
+from database import query_image, query_re_id
 from urllib.parse import parse_qs
 import base64
 import cv2

@@ -1,4 +1,4 @@
-from src.database.database import DbQuery
+from database.database import DbQuery
 
 class DbQuery(DbQuery):
     def __init__(self) -> None:

@@ -1,4 +1,4 @@
-from src.database.database import DbQuery
+from database.database import DbQuery
 
 
 class DbQuery(DbQuery):
@@ -11,8 +11,11 @@ class DbQuery(DbQuery):
         return [{'label': id, 'value': id} for id in df_ids['human_id'].values if int(id) > 0]
 
     def get_images(self, human_id=None, start_datetime=None, end_datetime=None):
-        query = "SELECT h.img_id, h.human_id, h.inference_datetime, v.img FROM human_table AS h"
-        query += " INNER JOIN vectorkb_table AS v ON h.img_id=v.img_id"
+        #query = "SELECT h.img_id, h.human_id, h.inference_datetime, i.img FROM human_table AS h"
+        #query += " INNER JOIN vectorkb_table AS v ON h.img_id=v.img_id"
+        query = "SELECT h.img_id, h.human_id, h.inference_datetime, i.query_img AS img, f.face_score AS face_score FROM human_table AS h"
+        query += " INNER JOIN inference_table AS i ON h.img_id=i.query_img_id"
+        query += " INNER JOIN face_scores_table AS f ON h.img_id=f.img_id"
         if human_id is not None:
             if " WHERE " in query:
                 query += " AND"
