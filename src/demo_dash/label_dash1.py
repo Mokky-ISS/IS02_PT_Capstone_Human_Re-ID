@@ -6,7 +6,7 @@ import dash_html_components as html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State, MATCH, ALL
 from demo_dash import header_label1 as header
-from database import query_re_id, query_mislabelled
+from database import query_re_id, query_correctlabel
 from urllib.parse import parse_qs
 import base64
 import cv2
@@ -23,9 +23,9 @@ def process_images(df):
 
 db_reid = query_re_id.DbQuery()
 df_reid = process_images(db_reid.get_images())
-db_mislabelled = query_mislabelled.DbQuery()
-df_mislabelled = db_mislabelled.get_mislabelled()
-df_mislabelled_orig = df_mislabelled.copy()
+db_correctlabel = query_correctlabel.DbQuery()
+df_correctlabel = db_correctlabel.get_correctlabel()
+df_correctlabel_orig = df_correctlabel.copy()
 
 external_stylesheets = [
     dbc.themes.COSMO,
@@ -134,12 +134,12 @@ def view_page_content():
         align='stretch'
     )
 
-    global df_mislabelled, df_mislabelled_orig
-    df_difference = pd.concat([df_mislabelled_orig, df_mislabelled]).drop_duplicates(
+    global df_correctlabel, df_correctlabel_orig
+    df_difference = pd.concat([df_correctlabel_orig, df_correctlabel]).drop_duplicates(
         keep=False).drop_duplicates('img_id', keep='last')
     table = dbc.Row(
-        id='table-mislabelled',
-        children=dbc.Table.from_dataframe(df_difference[['img_id']], striped=True, bordered=True, hover=True),
+        id='table-correctlabel',
+        children=dbc.Table.from_dataframe(df_difference[['img_id', 'is_correct']].astype(str), striped=True, bordered=True, hover=True),
         form=True, no_gutters=True, justify='stretch')
     save_row = dbc.Row(
         children=[
@@ -151,7 +151,7 @@ def view_page_content():
     )
     reset_row = dbc.Row(
         children=dbc.Button(children='Reset Database', id='btn-reset-db',
-                            disabled=df_mislabelled_orig.empty, color='secondary', size="lg"),
+                            disabled=df_correctlabel_orig.empty, color='secondary', size="lg"),
         no_gutters=True,
         justify='end'
     )
@@ -159,7 +159,7 @@ def view_page_content():
     right_sidebar = dbc.Col(
         id='right-sidebar',
         children=[save_row, table, reset_row],
-        width=2,
+        width=3,
         style=RIGHT_SIDEBAR_STYLE,
     )
     return dbc.Row(children=[
@@ -178,10 +178,11 @@ def view_page_content():
     State(component_id='view-human-id', component_property='value'),
 )
 def update_view_images(refresh_clicks, clear_clicks, human_id):
-    global df_mislabelled, df_mislabelled_orig
+    global df_correctlabel, df_correctlabel_orig
 
     if clear_clicks is not None:
-        df_mislabelled.loc[df_mislabelled.human_id == human_id, 'is_mislabelled'] = False
+        df_correctlabel.loc[df_correctlabel.human_id ==
+                            human_id, 'is_correct'] = False
 
     # db_reid.get_images(human_id=human_id)
     df_images = df_reid[df_reid.human_id == human_id]
@@ -199,9 +200,9 @@ def update_view_images(refresh_clicks, clear_clicks, human_id):
         #encoded_image = base64.b64encode(buffer)
         #encoded_image = base64.b64encode(row.img)
         style = {}
-        if not df_mislabelled.empty and \
-            not df_mislabelled[df_mislabelled.img_id == row.img_id].empty and \
-            df_mislabelled[df_mislabelled.img_id == row.img_id].iloc[0]['is_mislabelled']:
+        if not df_correctlabel.empty and \
+                not df_correctlabel[df_correctlabel.img_id == row.img_id].empty and \
+                df_correctlabel[df_correctlabel.img_id == row.img_id].iloc[0]['is_correct']:
             style['opacity'] = '0.3'
         images_col.append(
             dbc.Col(
@@ -230,9 +231,7 @@ def update_view_images(refresh_clicks, clear_clicks, human_id):
                 align='start',
             ))
 
-    logs_text = df_images[['img_id', 'human_id',
-                           'inference_datetime']].to_string(justify='center')
-    df_mislabelled[df_mislabelled.img_id != human_id] = df_mislabelled_orig[df_mislabelled_orig.img_id != human_id]
+    df_correctlabel[df_correctlabel.img_id != human_id] = df_correctlabel_orig[df_correctlabel_orig.img_id != human_id]
     return images_col, None, None
 
 
@@ -251,7 +250,7 @@ def display_output(n_clicks, style):
 
 
 @app.callback(
-    Output('table-mislabelled', 'children'),
+    Output('table-correctlabel', 'children'),
     Output('btn-save', 'disabled'),
     Output('btn-save', 'n_clicks'),
     Output('btn-reset-db', 'disabled'),
@@ -260,58 +259,62 @@ def display_output(n_clicks, style):
     Input('btn-save', 'n_clicks'),
     Input('btn-reset-db', 'n_clicks'),
     State({'type': 'image', 'index': ALL}, 'key'),
-    State('table-mislabelled', 'children'),
+    State('table-correctlabel', 'children'),
 )
 def display_selected(style, save_n_clicks, reset_n_clicks, key, table):
-    global db_mislabelled, df_mislabelled, df_reid, df_mislabelled_orig
+    global db_correctlabel, df_correctlabel, df_reid, df_correctlabel_orig
 
     if reset_n_clicks is not None:
-        db_mislabelled.reset_mislabelled()
-        df_mislabelled = db_mislabelled.get_mislabelled()
-        df_mislabelled_orig = df_mislabelled.copy()
+        db_correctlabel.reset_correctlabel()
+        df_correctlabel = db_correctlabel.get_correctlabel()
+        df_correctlabel_orig = df_correctlabel.copy()
 
     if save_n_clicks is not None:
-        db_mislabelled.save_mislabelled(df_mislabelled)
-        df_mislabelled = db_mislabelled.get_mislabelled()
-        df_mislabelled_orig = df_mislabelled.copy()
+        db_correctlabel.save_correctlabel(df_correctlabel)
+        df_correctlabel = db_correctlabel.get_correctlabel()
+        df_correctlabel_orig = df_correctlabel.copy()
 
     rows = []
     for idx, item in enumerate(style):
-        isMislabelled = False
+        isCorrectLabel = False
         if 'opacity' in item and item['opacity']=='0.3':
-            isMislabelled = True
+            isCorrectLabel = True
         human_id = df_reid[df_reid.img_id == key[idx]].iloc[0]['human_id']
-        rows.append({'img_id': key[idx], 'is_mislabelled': isMislabelled, 'human_id':human_id})
+        rows.append(
+            {'img_id': key[idx], 'is_correct': isCorrectLabel, 'human_id': human_id})
 
     if rows:
-        df_mislabelled = df_mislabelled.append(rows, ignore_index=True)
-        df_mislabelled = df_mislabelled.drop_duplicates('img_id', keep='last')
-        df_mislabelled = df_mislabelled.sort_values('img_id')
+        df_correctlabel = df_correctlabel.append(rows, ignore_index=True)
+        df_correctlabel = df_correctlabel.drop_duplicates(
+            'img_id', keep='last')
+        df_correctlabel = df_correctlabel.sort_values('img_id')
 
-    #if not df_mislabelled.empty:
-    df_difference = pd.concat([df_mislabelled_orig, df_mislabelled]).drop_duplicates(keep = False).drop_duplicates('img_id', keep = 'last')
-    df_difference = df_difference[(df_difference.is_mislabelled == True) | (df_difference.img_id.isin(df_mislabelled_orig.img_id))]
+    df_difference = pd.concat([df_correctlabel_orig, df_correctlabel]).drop_duplicates(
+        keep=False).drop_duplicates('img_id', keep='last')
+    df_difference = df_difference[(df_difference.is_correct == True) | (
+        df_difference.img_id.isin(df_correctlabel_orig.img_id))]
     disabled = df_difference.empty
     df_difference = df_difference[df_difference.img_id.isin(key)]
 
-    table = dbc.Table.from_dataframe(df_difference[['img_id']], striped=True, bordered=True, hover=True)
+    print(df_difference)
+    table = dbc.Table.from_dataframe(df_difference[['img_id', 'is_correct']].astype(str), striped=True, bordered=True, hover=True)
 
-    return table, disabled, None, df_mislabelled_orig.empty, None
+    return table, disabled, None, df_correctlabel_orig.empty, None
 
 
 #@app.callback(
 #    Output('btn-save', 'disabled'),
 #    Output('btn-save', 'n_clicks'),
-#    Input('table-mislabelled', 'children'),
+#    Input('table-correctlabel', 'children'),
 #    Input('btn-save', 'n_clicks'),
 #)
-#def save_mislabelled(children, n_clicks):
-#   global db_mislabelled, df_mislabelled, df_mislabelled_orig
+#def save_correctlabel(children, n_clicks):
+#   global db_correctlabel, df_correctlabel, df_correctlabel_orig
 #    if n_clicks is not None:
-#        db_mislabelled.save_mislabelled(df_mislabelled)
-#        df_mislabelled = db_mislabelled.get_mislabelled()
-#       df_mislabelled_orig = df_mislabelled.copy()
-#    difference = pd.concat([df_mislabelled_orig, df_mislabelled]).drop_duplicates(keep=False)
+#        db_correctlabel.save_correctlabel(df_correctlabel)
+#        df_correctlabel = db_correctlabel.get_correctlabel()
+#       df_correctlabel_orig = df_correctlabel.copy()
+#    difference = pd.concat([df_correctlabel_orig, df_correctlabel]).drop_duplicates(keep=False)
 #    disabled = difference.empty
 
 #    return disabled, None
