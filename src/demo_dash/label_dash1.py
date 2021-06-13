@@ -168,19 +168,20 @@ def view_page_content():
         right_sidebar
     ])
 
-
+clear_clicks = None
 @app.callback(
     Output(component_id='view-images-row', component_property='children'),
-    Output(component_id='view-btn-refresh', component_property='n_clicks'),
-    Output(component_id='btn-clear-selection', component_property='n_clicks'),
     Input(component_id='view-btn-refresh', component_property='n_clicks'),
     Input(component_id='btn-clear-selection', component_property='n_clicks'),
     State(component_id='view-human-id', component_property='value'),
 )
-def update_view_images(refresh_clicks, clear_clicks, human_id):
+def update_view_images(refresh_clicks, clear_n_clicks, human_id):
     global df_correctlabel, df_correctlabel_orig
+    global clear_clicks
 
-    if clear_clicks is not None:
+    if clear_n_clicks != clear_clicks:
+        print(clear_n_clicks, clear_clicks)
+        clear_clicks = clear_n_clicks
         df_correctlabel.loc[df_correctlabel.human_id ==
                             human_id, 'is_correct'] = False
 
@@ -201,8 +202,8 @@ def update_view_images(refresh_clicks, clear_clicks, human_id):
         #encoded_image = base64.b64encode(row.img)
         style = {}
         if not df_correctlabel.empty and \
-                not df_correctlabel[df_correctlabel.img_id == row.img_id].empty and \
-                df_correctlabel[df_correctlabel.img_id == row.img_id].iloc[0]['is_correct']:
+                row.img_id in df_correctlabel.img_id.unique() and \
+                df_correctlabel.loc[df_correctlabel.img_id == row.img_id, 'is_correct'].values[0]:
             style['opacity'] = '0.3'
         images_col.append(
             dbc.Col(
@@ -232,7 +233,7 @@ def update_view_images(refresh_clicks, clear_clicks, human_id):
             ))
 
     df_correctlabel[df_correctlabel.img_id != human_id] = df_correctlabel_orig[df_correctlabel_orig.img_id != human_id]
-    return images_col, None, None
+    return images_col
 
 
 @app.callback(
@@ -248,13 +249,12 @@ def display_output(n_clicks, style):
             style['opacity'] = '0.3'
     return style
 
-
+save_clicks = None
+reset_clicks = None
 @app.callback(
     Output('table-correctlabel', 'children'),
     Output('btn-save', 'disabled'),
-    Output('btn-save', 'n_clicks'),
     Output('btn-reset-db', 'disabled'),
-    Output('btn-reset-db', 'n_clicks'),
     Input({'type': 'image', 'index': ALL}, 'style'),
     Input('btn-save', 'n_clicks'),
     Input('btn-reset-db', 'n_clicks'),
@@ -263,16 +263,20 @@ def display_output(n_clicks, style):
 )
 def display_selected(style, save_n_clicks, reset_n_clicks, key, table):
     global db_correctlabel, df_correctlabel, df_reid, df_correctlabel_orig
+    global save_clicks, reset_clicks
 
-    if reset_n_clicks is not None:
+    if reset_n_clicks != reset_clicks:
+        reset_clicks = reset_n_clicks
         db_correctlabel.reset_correctlabel()
         df_correctlabel = db_correctlabel.get_correctlabel()
         df_correctlabel_orig = df_correctlabel.copy()
 
-    if save_n_clicks is not None:
+    if save_n_clicks != save_clicks:
+        save_clicks = save_n_clicks
         db_correctlabel.save_correctlabel(df_correctlabel)
         df_correctlabel = db_correctlabel.get_correctlabel()
         df_correctlabel_orig = df_correctlabel.copy()
+        print(df_correctlabel)
 
     rows = []
     for idx, item in enumerate(style):
@@ -296,10 +300,9 @@ def display_selected(style, save_n_clicks, reset_n_clicks, key, table):
     disabled = df_difference.empty
     df_difference = df_difference[df_difference.img_id.isin(key)]
 
-    print(df_difference)
     table = dbc.Table.from_dataframe(df_difference[['img_id', 'is_correct']].astype(str), striped=True, bordered=True, hover=True)
 
-    return table, disabled, None, df_correctlabel_orig.empty, None
+    return table, disabled, df_correctlabel_orig.empty
 
 
 #@app.callback(
