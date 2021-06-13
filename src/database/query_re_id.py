@@ -3,7 +3,7 @@ from database.database import DbQuery
 
 class DbQuery(DbQuery):
     def __init__(self) -> None:
-        super().__init__('database/reid_db.db')
+        super().__init__('database/reid_db_labelling.db')
 
     def get_human_id_options(self):
         query = "SELECT DISTINCT(human_id) FROM human_table"

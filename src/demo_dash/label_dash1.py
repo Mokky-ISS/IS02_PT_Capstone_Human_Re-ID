@@ -107,8 +107,14 @@ def view_page_content():
             html.Br(),
             dbc.Button(children='Refresh', id='view-btn-refresh',
                        color='primary', block=True, size="lg"),
+            html.Hr(),
+            dbc.Button(children='Clear Selection',
+                       id='btn-clear-selection',
+                               color='secondary', block=True, size="lg",),
+
+
         ],
-        width=1,
+        width='auto',
         style=LEFT_SIDEBAR_STYLE,
     )
 
@@ -124,15 +130,17 @@ def view_page_content():
                 #fluid=True,
             )),
         ],
-        width=9,
+        width=True,
         align='stretch'
     )
 
-
-    global df_mislabelled
+    global df_mislabelled, df_mislabelled_orig
+    df_difference = pd.concat([df_mislabelled_orig, df_mislabelled]).drop_duplicates(
+        keep=False).drop_duplicates('img_id', keep='last')
     table = dbc.Row(
-        id='table-mislabelled', form=True, no_gutters=True,
-        children=dbc.Table.from_dataframe(df_mislabelled[['img_id']], striped=True, bordered=True, hover=True))
+        id='table-mislabelled',
+        children=dbc.Table.from_dataframe(df_difference[['img_id']], striped=True, bordered=True, hover=True),
+        form=True, no_gutters=True, justify='stretch')
     save_row = dbc.Row(
         children=[
             dbc.Col(html.H6(html.U('Changes'))),
@@ -141,10 +149,16 @@ def view_page_content():
         no_gutters=True,
         justify='end'
     )
+    reset_row = dbc.Row(
+        children=dbc.Button(children='Reset Database', id='btn-reset-db',
+                            disabled=df_mislabelled_orig.empty, color='secondary', size="lg"),
+        no_gutters=True,
+        justify='end'
+    )
 
     right_sidebar = dbc.Col(
         id='right-sidebar',
-        children=[save_row, table],
+        children=[save_row, table, reset_row],
         width=2,
         style=RIGHT_SIDEBAR_STYLE,
     )
@@ -157,16 +171,23 @@ def view_page_content():
 
 @app.callback(
     Output(component_id='view-images-row', component_property='children'),
+    Output(component_id='view-btn-refresh', component_property='n_clicks'),
+    Output(component_id='btn-clear-selection', component_property='n_clicks'),
     Input(component_id='view-btn-refresh', component_property='n_clicks'),
+    Input(component_id='btn-clear-selection', component_property='n_clicks'),
     State(component_id='view-human-id', component_property='value'),
 )
-def update_view_images(btn_clicks, human_id):
+def update_view_images(refresh_clicks, clear_clicks, human_id):
+    global df_mislabelled, df_mislabelled_orig
+
+    if clear_clicks is not None:
+        df_mislabelled.loc[df_mislabelled.human_id == human_id, 'is_mislabelled'] = False
+
     # db_reid.get_images(human_id=human_id)
     df_images = df_reid[df_reid.human_id == human_id]
     df_images = df_images.sort_values(by=['face_score'], ascending= False)
     #clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     images_col = []
-    global df_mislabelled
     for index, row in df_images.iterrows():
         #encoded_image = cv2.imdecode(np.frombuffer(df_images['img'].iloc[i], np.uint8), cv2.IMREAD_ANYCOLOR)
         #lab = cv2.cvtColor(encoded_image, cv2.COLOR_BGR2LAB)
@@ -211,9 +232,8 @@ def update_view_images(btn_clicks, human_id):
 
     logs_text = df_images[['img_id', 'human_id',
                            'inference_datetime']].to_string(justify='center')
-    arrClicks = None
-
-    return images_col
+    df_mislabelled[df_mislabelled.img_id != human_id] = df_mislabelled_orig[df_mislabelled_orig.img_id != human_id]
+    return images_col, None, None
 
 
 @app.callback(
@@ -232,13 +252,29 @@ def display_output(n_clicks, style):
 
 @app.callback(
     Output('table-mislabelled', 'children'),
-    #Output('btn-save', 'disabled'),
+    Output('btn-save', 'disabled'),
+    Output('btn-save', 'n_clicks'),
+    Output('btn-reset-db', 'disabled'),
+    Output('btn-reset-db', 'n_clicks'),
     Input({'type': 'image', 'index': ALL}, 'style'),
+    Input('btn-save', 'n_clicks'),
+    Input('btn-reset-db', 'n_clicks'),
     State({'type': 'image', 'index': ALL}, 'key'),
     State('table-mislabelled', 'children'),
 )
-def display_selected(style, key, table):
-    global df_mislabelled, df_reid, df_mislabelled_orig
+def display_selected(style, save_n_clicks, reset_n_clicks, key, table):
+    global db_mislabelled, df_mislabelled, df_reid, df_mislabelled_orig
+
+    if reset_n_clicks is not None:
+        db_mislabelled.reset_mislabelled()
+        df_mislabelled = db_mislabelled.get_mislabelled()
+        df_mislabelled_orig = df_mislabelled.copy()
+
+    if save_n_clicks is not None:
+        db_mislabelled.save_mislabelled(df_mislabelled)
+        df_mislabelled = db_mislabelled.get_mislabelled()
+        df_mislabelled_orig = df_mislabelled.copy()
+
     rows = []
     for idx, item in enumerate(style):
         isMislabelled = False
@@ -251,28 +287,31 @@ def display_selected(style, key, table):
         df_mislabelled = df_mislabelled.append(rows, ignore_index=True)
         df_mislabelled = df_mislabelled.drop_duplicates('img_id', keep='last')
         df_mislabelled = df_mislabelled.sort_values('img_id')
-    if not df_mislabelled.empty:
-        difference = pd.concat([df_mislabelled_orig, df_mislabelled]).drop_duplicates(keep=False).drop_duplicates('img_id', keep='last')
-        table = dbc.Table.from_dataframe(df_mislabelled[df_mislabelled.img_id.isin(
-            key) & df_mislabelled.img_id.isin(difference.img_id)][['img_id']], striped=True, bordered=True, hover=True)
-    disabled = difference.empty
 
-    return table, disabled
+    #if not df_mislabelled.empty:
+    df_difference = pd.concat([df_mislabelled_orig, df_mislabelled]).drop_duplicates(keep = False).drop_duplicates('img_id', keep = 'last')
+    df_difference = df_difference[(df_difference.is_mislabelled == True) | (df_difference.img_id.isin(df_mislabelled_orig.img_id))]
+    disabled = df_difference.empty
+    df_difference = df_difference[df_difference.img_id.isin(key)]
+
+    table = dbc.Table.from_dataframe(df_difference[['img_id']], striped=True, bordered=True, hover=True)
+
+    return table, disabled, None, df_mislabelled_orig.empty, None
 
 
-@app.callback(
-    Output('btn-save', 'disabled'),
-    Output('btn-save', 'n_clicks'),
-    Input('table-mislabelled', 'children'),
-    Input('btn-save', 'n_clicks'),
-)
-def save_mislabelled(children, n_clicks):
-    global db_mislabelled, df_mislabelled, df_mislabelled_orig
-    if n_clicks is not None:
-        db_mislabelled.save_mislabelled(df_mislabelled)
-        df_mislabelled = db_mislabelled.get_mislabelled()
-        df_mislabelled_orig = df_mislabelled.copy()
-    difference = pd.concat([df_mislabelled_orig, df_mislabelled]).drop_duplicates(keep=False)
-    disabled = difference.empty
+#@app.callback(
+#    Output('btn-save', 'disabled'),
+#    Output('btn-save', 'n_clicks'),
+#    Input('table-mislabelled', 'children'),
+#    Input('btn-save', 'n_clicks'),
+#)
+#def save_mislabelled(children, n_clicks):
+#   global db_mislabelled, df_mislabelled, df_mislabelled_orig
+#    if n_clicks is not None:
+#        db_mislabelled.save_mislabelled(df_mislabelled)
+#        df_mislabelled = db_mislabelled.get_mislabelled()
+#       df_mislabelled_orig = df_mislabelled.copy()
+#    difference = pd.concat([df_mislabelled_orig, df_mislabelled]).drop_duplicates(keep=False)
+#    disabled = difference.empty
 
-    return disabled, None
+#    return disabled, None

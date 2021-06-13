@@ -5,7 +5,7 @@ import sqlite3
 
 class DbQuery(DbQuery):
     def __init__(self) -> None:
-        super().__init__('database/reid_db.db')
+        super().__init__('database/reid_db_labelling.db')
         self.table = "mislabelled_table"
 
     def get_mislabelled(self):
@@ -23,3 +23,9 @@ class DbQuery(DbQuery):
                                sqlite3.PARSE_COLNAMES) as conn:
             df.to_sql(self.table, con=conn, index=False, if_exists='replace')
 
+    def reset_mislabelled(self):
+        query = f"DROP TABLE {self.table}"
+        with sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query)
+            conn.commit()
