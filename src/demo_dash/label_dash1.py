@@ -100,9 +100,13 @@ def view_page_content():
         id='view-page-sidebar',
         children=[
             html.P('Human ID:'),
-            dbc.Spinner(dcc.Dropdown(
+            dbc.Spinner(dcc.Input(
                 id='view-human-id',
-                options=db_reid.get_human_id_options(),
+                value=0,
+                type="number",
+                min = 0,
+                step = 1,
+                max = 9999,
             )),
             html.Br(),
             dbc.Button(children='Refresh', id='view-btn-refresh',
@@ -178,6 +182,8 @@ clear_clicks = None
 def update_view_images(refresh_clicks, clear_n_clicks, human_id):
     global df_correctlabel, df_correctlabel_orig
     global clear_clicks
+
+    human_id = str(human_id)
 
     if clear_n_clicks != clear_clicks:
         print(clear_n_clicks, clear_clicks)
