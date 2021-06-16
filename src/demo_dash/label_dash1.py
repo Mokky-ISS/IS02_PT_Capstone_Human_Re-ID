@@ -139,7 +139,7 @@ def view_page_content():
     )
 
     global df_correctlabel, df_correctlabel_orig
-    df_difference = pd.concat([df_correctlabel_orig, df_correctlabel]).drop_duplicates(
+    df_difference = pd.concat([df_correctlabel_orig, df_correctlabel], ignore_index=True).drop_duplicates(
         keep=False).drop_duplicates('img_id', keep='last')
     table = dbc.Row(
         id='table-correctlabel',
@@ -238,7 +238,12 @@ def update_view_images(refresh_clicks, clear_n_clicks, human_id):
                 align='start',
             ))
 
-    df_correctlabel[df_correctlabel.img_id != human_id] = df_correctlabel_orig[df_correctlabel_orig.img_id != human_id]
+    #df_correctlabel[df_correctlabel.img_id != human_id] = df_correctlabel_orig[df_correctlabel_orig.img_id != human_id]
+    df_correctlabel = pd.concat([df_correctlabel[df_correctlabel.img_id == human_id],
+                         df_correctlabel_orig[df_correctlabel_orig.img_id != human_id]],
+                         ignore_index=True).drop_duplicates(keep=False).drop_duplicates('img_id', keep='last')
+    print('Length:',len(df_correctlabel))
+    print(df_correctlabel.nunique())
     return images_col
 
 
@@ -282,7 +287,6 @@ def display_selected(style, save_n_clicks, reset_n_clicks, key, table):
         db_correctlabel.save_correctlabel(df_correctlabel)
         df_correctlabel = db_correctlabel.get_correctlabel()
         df_correctlabel_orig = df_correctlabel.copy()
-        print(df_correctlabel)
 
     rows = []
     for idx, item in enumerate(style):
@@ -299,7 +303,7 @@ def display_selected(style, save_n_clicks, reset_n_clicks, key, table):
             'img_id', keep='last')
         df_correctlabel = df_correctlabel.sort_values('img_id')
 
-    df_difference = pd.concat([df_correctlabel_orig, df_correctlabel]).drop_duplicates(
+    df_difference = pd.concat([df_correctlabel_orig, df_correctlabel], ignore_index=True).drop_duplicates(
         keep=False).drop_duplicates('img_id', keep='last')
     df_difference = df_difference[(df_difference.is_correct == True) | (
         df_difference.img_id.isin(df_correctlabel_orig.img_id))]
@@ -323,7 +327,7 @@ def display_selected(style, save_n_clicks, reset_n_clicks, key, table):
 #        db_correctlabel.save_correctlabel(df_correctlabel)
 #        df_correctlabel = db_correctlabel.get_correctlabel()
 #       df_correctlabel_orig = df_correctlabel.copy()
-#    difference = pd.concat([df_correctlabel_orig, df_correctlabel]).drop_duplicates(keep=False)
+#    difference = pd.concat([df_correctlabel_orig, df_correctlabel], ignore_index=True).drop_duplicates(keep=False)
 #    disabled = difference.empty
 
 #    return disabled, None
