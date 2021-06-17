@@ -193,7 +193,7 @@ def update_view_images(refresh_clicks, clear_n_clicks, human_id):
 
     # db_reid.get_images(human_id=human_id)
     df_images = df_reid[df_reid.human_id == human_id]
-    df_images = df_images.sort_values(by=['face_score'], ascending= False)
+    #df_images = df_images.sort_values(by=['face_score'], ascending= False)
     #clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     images_col = []
     for index, row in df_images.iterrows():
