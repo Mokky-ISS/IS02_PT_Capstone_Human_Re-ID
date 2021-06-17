@@ -63,7 +63,7 @@ class Track:
 
     """
 
-    def __init__(self, mean, covariance, track_id, n_init, max_age,
+    def __init__(self, mean, covariance, track_id, n_init, max_age, adc_threshold, detection_confidence, 
                  feature=None, class_name=None):
         self.mean = mean
         self.covariance = covariance
@@ -71,6 +71,11 @@ class Track:
         self.hits = 1
         self.age = 1
         self.time_since_update = 0
+
+        self.total_prob = 0
+        self.adc_threshold = adc_threshold  # Average detection confidence threshold
+        self.detection_confidence = detection_confidence
+        self.adc = 0
 
         self.state = TrackState.Tentative
         self.features = []
@@ -148,8 +153,13 @@ class Track:
 
         self.hits += 1
         self.time_since_update = 0
+        self.total_prob += self.detection_confidence
+        self.adc = self.total_prob / self.hits
         if self.state == TrackState.Tentative and self.hits >= self._n_init:
-            self.state = TrackState.Confirmed
+            if self.adc < self.adc_threshold:
+                self.state = TrackState.Deleted
+            else:
+                self.state = TrackState.Confirmed
 
     def mark_missed(self):
         """Mark this track as missed (no association at the current time step).

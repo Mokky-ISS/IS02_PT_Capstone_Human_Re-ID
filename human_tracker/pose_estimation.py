@@ -68,7 +68,8 @@ def check_pose(img_patch, id):
             static_image_mode=True,
             model_complexity=2,
             min_detection_confidence=0.9) as pose:
-        #img_patch = cv2.imread("./database/img/3_U5ZE_20210607T131744_210.jpg")
+        #fname = "3_3FXQ_20210614T183634_105570.jpg"
+        #img_patch = cv2.imread("./database/img/"+fname)
         if test_image_from_db:
             img_patch, img_id = get_patch_np(3)
             print("img_id:", img_id)
@@ -144,6 +145,7 @@ def check_pose(img_patch, id):
             mp_drawing.draw_landmarks(
                 annotated_image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
             cv2.imwrite('./database/img/from_dp/' + str(id) + "_" + str(img_count) + '.jpg', annotated_image)
+            #cv2.imwrite('./database/img/from_dp/' + str(id) + "_" + str(fname), annotated_image)
     # if img_count > 21:
     #     exit(-1)
     img_count += 1

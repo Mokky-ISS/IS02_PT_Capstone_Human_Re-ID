@@ -39,11 +39,13 @@ class Tracker:
 
     """
     # max_iou_distance refers to IOU distance (reverse of IOU score) for association on two consecutive pair (previous and current frames).
-    def __init__(self, metric, max_iou_distance=0.7, max_age=60, n_init=3):
+
+    def __init__(self, metric, max_iou_distance=0.7, max_age=60, n_init=3, adc_threshold=0.5):
         self.metric = metric
         self.max_iou_distance = max_iou_distance
         self.max_age = max_age
         self.n_init = n_init
+        self.adc_threshold = adc_threshold
 
         self.kf = kalman_filter.KalmanFilter()
         self.tracks = []
@@ -95,7 +97,7 @@ class Tracker:
 
     def _match(self, detections):
         # note:
-        # - For new detection, it is classified as tentative in the first n_init frames. 
+        # - For new detection, it is classified as tentative in the first n_init frames.
         # - Only the tracks which are classified as confirmed will use feature similarity, other tracks wil use IOU similarity.
         # - For new detection, if it cannot be matched using IOU similarity in every frame of the first n_init frames, it will be classified as deleted.
         def gated_metric(tracks, dets, track_indices, detection_indices):
@@ -140,7 +142,7 @@ class Tracker:
         mean, covariance = self.kf.initiate(detection.to_xyah())
         class_name = detection.get_class()
         self.tracks.append(Track(
-            mean, covariance, self._next_id, self.n_init, self.max_age,
+            mean, covariance, self._next_id, self.n_init, self.max_age, self.adc_threshold, detection.confidence,
             detection.feature, class_name))
         #self._next_id += 1
         # https://www.geeksforgeeks.org/generating-random-ids-python/

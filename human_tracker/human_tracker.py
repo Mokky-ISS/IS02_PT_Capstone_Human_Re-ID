@@ -217,6 +217,11 @@ def run_human_tracker(_argv):
             break
         print("[cam %d] Frame #: %d" % (FLAGS.cam_id, frame_num))
 
+        # Skip input frames
+        if frame_num % FLAGS.input_skip_frame != 0:
+            frame_num += 1
+            continue
+
         frame_size = frame.shape[:2]
         image_data = cv2.resize(frame, (input_size, input_size))
         image_data = image_data / 255.
@@ -332,7 +337,7 @@ def run_human_tracker(_argv):
 
             # update database
             # skip frame is done here to extract less data for database, if overall FPS for videocapture is reduced to one, tracker wont work.
-            if FLAGS.db and frame_num % FLAGS.skip_frame == 0:
+            if FLAGS.db and frame_num % FLAGS.db_skip_frame == 0:
                 # Saliant sampling
                 print("=================================================")
                 print("Active targets: ", end=" ")
@@ -453,7 +458,8 @@ def run_human_tracker(_argv):
     plt.savefig('soft_threshold.png')
     # plt.show()
     vid.release()
-    out.release()
+    if FLAGS.output:
+        out.release()
     cv2.destroyAllWindows()
 
 
