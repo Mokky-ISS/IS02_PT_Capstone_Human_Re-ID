@@ -29,14 +29,23 @@ from absl import app, flags, logging
 # child process from main.py
 
 
-def camera_capture(cam_id):
+def camera_capture(*args):
     # assign camera id into new camera process.
-    flags.DEFINE_integer('cam_id', cam_id, 'camera ID to run on different camera')
+    # offline
+    if len(args) == 1:
+        flags.DEFINE_integer('cam_id', args[0], 'camera ID to run on different camera')
+    # online
+    else:
+        flags.DEFINE_integer('cam_id', args[0], 'camera ID to run on different camera')
+        flags.DEFINE_string('rstp', args[1], 'rstp to run on different camera')
     try:
         app.run(run_human_tracker)
     except SystemExit:
         pass
 
+def run_human_tracker_2(_argv):
+    print('rstp: ' + FLAGS.rstp)
+    print('cam_id: ' + str(FLAGS.cam_id))
 
 def run_human_tracker_1(_argv):
     import time
@@ -155,14 +164,20 @@ def run_human_tracker(_argv):
     STRIDES, ANCHORS, NUM_CLASS, XYSCALE = utils.load_config(FLAGS)
     input_size = FLAGS.size
     video_path = None
-    if not FLAGS.video.isdigit():
-        vid_name = 'ch' + str(FLAGS.cam_id) + '.mp4'
-        video_path = os.path.join(FLAGS.video, vid_name)
+
+    if FLAGS.online:
+        video_path = FLAGS.rstp
         print('video_path:', video_path)
+        print('cam_id: ' + str(FLAGS.cam_id))
     else:
-        video_path = int(FLAGS.video)
-        print("Use webcam", video_path)
-        print(type(video_path))
+        if not FLAGS.video.isdigit():
+            vid_name = 'ch' + str(FLAGS.cam_id) + '.mp4'
+            video_path = os.path.join(FLAGS.video, vid_name)
+            print('video_path:', video_path)
+        else:
+            video_path = int(FLAGS.video)
+            print("Use webcam", video_path)
+            print(type(video_path))
 
     # load model
     saved_model_loaded = tf.saved_model.load(FLAGS.weights, tags=[tag_constants.SERVING])

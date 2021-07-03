@@ -7,3 +7,4 @@ matplotlib
 easydict
 pillow
 mediapipe
+openpyxl

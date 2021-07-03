@@ -6,6 +6,7 @@ from database import ImageDB
 from absl import app, flags, logging
 from absl.flags import FLAGS
 import numpy as np
+import pandas as pd
 
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt)')
 flags.DEFINE_string('weights', './checkpoints/yolov4-416',
@@ -29,7 +30,7 @@ flags.DEFINE_integer('db_skip_frame', 30, 'number of frame to be skipped')
 flags.DEFINE_boolean('saliant_sampling', True, 'select and store unique frame only into database')
 flags.DEFINE_boolean('plot_graph', False, 'plot graph for soft threshold')
 flags.DEFINE_integer('parallel_ps', 2, 'number of human tracker process to run')
-
+flags.DEFINE_boolean('online', False, 'run online image extraction using rstp')
 
 def db_process():
     pass
@@ -82,6 +83,20 @@ def sequential_run(batch, mps):
     for j in mps.job:
         j.join()
 
+def online_run(rstp, cam, mps):
+    mps.job.clear()
+    for i in range(FLAGS.parallel_ps):
+        # cam[i]:int , rstp[i]:str
+        mps.new_job('camera_ch' + str(cam[i]), camera_capture, cam[i], rstp[i])
+        print("New online process for cam " + str(cam[i]))
+    for j in mps.job:
+        j.start()
+    for j in mps.job:
+        j.join()  
+
+def get_rstp(file):
+    table = pd.read_excel(file, dtype={'Camera RTSP Stream': str,  'Channel': int}, engine='openpyxl')
+    return table
 
 def create_ps_list(vfile):
     ch_list = []
@@ -129,21 +144,27 @@ def main(_argv):
     img_db.delete_dbfile()
     img_db.create_table()
 
-    if not FLAGS.video.isdigit():
-        # get video file info from video folder
-        vfile = os.listdir(FLAGS.video)
-        if len(vfile) == 0:
-            print("No files in the " + FLAGS.video)
-            return -1
-
-        ps_list = create_ps_list(vfile)
-
-        print("Start Multiprocessing..")
-        # run new camera process
-        for batch in ps_list:
-            sequential_run(batch, mps)
+    # online mode
+    if FLAGS.online:
+        table = get_rstp('data/rstp/rstp_cam.xlsx')
+        online_run(table.to_dict('dict')['rstp'], table.to_dict('dict')['cam'], mps)
+    # offline mode
     else:
-        cam_stream(mps)
+        if not FLAGS.video.isdigit():      
+            # get video file info from video folder
+            vfile = os.listdir(FLAGS.video)
+            if len(vfile) == 0:
+                print("No files in the " + FLAGS.video)
+                return -1
+
+            ps_list = create_ps_list(vfile)
+
+            print("Start Multiprocessing..")
+            # run new camera process
+            for batch in ps_list:
+                sequential_run(batch, mps)
+        else:
+            cam_stream(mps)
     #mps.new_job('database_ps', db_process)
     # for j in mps.job:
     #    j.start()
