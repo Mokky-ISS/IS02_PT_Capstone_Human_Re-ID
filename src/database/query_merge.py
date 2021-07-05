@@ -5,9 +5,10 @@ import sqlite3
 
 class MergeDbQuery():
     def __init__(self) -> None:
-        dbPaths = [
-            "database/reid_db_labelling (341-479)DC.db",
-            "database/reid_db_(480-682)_YS.db"]
+        #dbPaths = [
+        #    "database/reid_db_labelling (341-479)DC.db",
+        #    "database/reid_db_(480-682)_YS.db"]
+        dbPaths = ["database/reid_db_labelling.db"]
         self.correctlabel_table = "correctlabel_table"
         self.dbQueries = []
         for path in dbPaths:
