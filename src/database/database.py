@@ -38,3 +38,4 @@ class DbQuery(object):
     def query_data(self, query):
         self._sql_query(query)
         return self.data
+
