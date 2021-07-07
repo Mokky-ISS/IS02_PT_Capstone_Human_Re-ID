@@ -7,6 +7,7 @@ from absl import app, flags, logging
 from absl.flags import FLAGS
 import numpy as np
 import pandas as pd
+import signal, sys
 
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt)')
 flags.DEFINE_string('weights', './checkpoints/yolov4-416',
@@ -30,13 +31,12 @@ flags.DEFINE_integer('db_skip_frame', 30, 'number of frame to be skipped')
 flags.DEFINE_boolean('saliant_sampling', True, 'select and store unique frame only into database')
 flags.DEFINE_boolean('plot_graph', False, 'plot graph for soft threshold')
 flags.DEFINE_integer('parallel_ps', 2, 'number of human tracker process to run')
-flags.DEFINE_boolean('online', False, 'run online image extraction using rstp')
+flags.DEFINE_boolean('online', False, 'run online image extraction using rtsp')
 
 def db_process():
     pass
     #db = ImageDB()
     # db.insert_data
-
 
 class MultiPs():
     def __init__(self):
@@ -63,6 +63,12 @@ class MultiPs():
         t.daemon = True
         self.thread.append(t)
 
+    def signal_handler(self, sig, frame):
+        print('Main Program: You pressed Ctrl+C!')
+        for j in self.job:
+            j.join()
+
+        sys.exit(0)
 
 def cam_stream(mps):
     mps.job.clear()
@@ -83,18 +89,18 @@ def sequential_run(batch, mps):
     for j in mps.job:
         j.join()
 
-def online_run(rstp, cam, mps):
+def online_run(rtsp, cam, mps):
     mps.job.clear()
     for i in range(FLAGS.parallel_ps):
-        # cam[i]:int , rstp[i]:str
-        mps.new_job('camera_ch' + str(cam[i]), camera_capture, cam[i], rstp[i])
+        # cam[i]:int , rtsp[i]:str
+        mps.new_job('camera_ch' + str(cam[i]), camera_capture, cam[i], rtsp[i])
         print("New online process for cam " + str(cam[i]))
     for j in mps.job:
         j.start()
     for j in mps.job:
         j.join()  
 
-def get_rstp(file):
+def get_rtsp(file):
     table = pd.read_excel(file, dtype={'Camera RTSP Stream': str,  'Channel': int}, engine='openpyxl')
     return table
 
@@ -135,6 +141,7 @@ def main_single(_argv):
 
 def main(_argv):
     mps = MultiPs()
+    signal.signal(signal.SIGINT, mps.signal_handler)
 
     # mps.log_msg()
     print("Parent Process PID: " + str(os.getpid()))
@@ -146,8 +153,8 @@ def main(_argv):
 
     # online mode
     if FLAGS.online:
-        table = get_rstp('data/rstp/rstp_cam.xlsx')
-        online_run(table.to_dict('dict')['rstp'], table.to_dict('dict')['cam'], mps)
+        table = get_rtsp('data/rtsp/rtsp_cam.xlsx')
+        online_run(table.to_dict('dict')['rtsp'], table.to_dict('dict')['cam'], mps)
     # offline mode
     else:
         if not FLAGS.video.isdigit():      

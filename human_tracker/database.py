@@ -7,11 +7,11 @@ import datetime
 
 
 class ImageDB(object):
-
-    def __init__(self):
+    main_db = "./database/Image.db"
+    def __init__(self, db_name=main_db):
         self.conn = None
         self.cursor = None
-        self.db_path = "./database/Image.db"
+        self.db_path = db_name
         #self.db_path = "./database/Image_complete.db"
         self.table_name = "VectorKB_Table"
         # change the default column title here
@@ -101,6 +101,22 @@ class ImageDB(object):
         print(command)
         self.cursor.execute(command)
         self.data = self.cursor.fetchall()
+
+    # link: https://stackoverflow.com/questions/11653267/merge-tables-from-two-different-databases-sqlite3-python
+    # @_con_sqlite  # only use this method in main database!
+    # def merge_data(self, db_lists):
+    #     for db in db_lists:
+    #         db_cam = sqlite3.connect(db, detect_types=sqlite3.PARSE_DECLTYPES |
+    #                                     sqlite3.PARSE_COLNAMES)
+    #         db_cursor = db_cam.cursor()
+    #         command = 'SELECT * FROM ' + self.table_name
+    #         db_cursor.execute(command)
+    #         output = db_cursor.fetchall()   # Returns the results as a list.
+    #         # Insert those contents into another table.
+    #         for row in output:
+    #             self.cursor.execute('INSERT INTO ' + self.table_name + ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', row)
+    #         # Cleanup
+    #         db_cursor.close()
 
     # SAMPLE METHOD JUST FOR REFERENCE, DONT RUN THIS METHOD!
     # @_con_sqlite

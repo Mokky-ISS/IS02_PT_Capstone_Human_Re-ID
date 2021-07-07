@@ -37,14 +37,14 @@ def camera_capture(*args):
     # online
     else:
         flags.DEFINE_integer('cam_id', args[0], 'camera ID to run on different camera')
-        flags.DEFINE_string('rstp', args[1], 'rstp to run on different camera')
+        flags.DEFINE_string('rtsp', args[1], 'rtsp to run on different camera')
     try:
         app.run(run_human_tracker)
     except SystemExit:
         pass
 
 def run_human_tracker_2(_argv):
-    print('rstp: ' + FLAGS.rstp)
+    print('rtsp: ' + FLAGS.rtsp)
     print('cam_id: ' + str(FLAGS.cam_id))
 
 def run_human_tracker_1(_argv):
@@ -82,6 +82,8 @@ def run_human_tracker(_argv):
     # system packages
     import time
     import os
+    import multiprocessing as mp
+    import sys, signal
     # tensorflow packages
     import tensorflow as tf
     from tensorflow.compat.v1 import InteractiveSession
@@ -95,6 +97,16 @@ def run_human_tracker(_argv):
     import cv2
     from PIL import Image
     from collections import deque
+
+    # def signal_handler(sig, frame):
+    #     name = mp.current_process().name
+    #     print(str(name) + ': You pressed Ctrl+C!')
+    #     vid.release()
+    #     if FLAGS.output:
+    #         out.release()
+    #     cv2.destroyAllWindows()
+    #     sys.exit(0)
+    # signal.signal(signal.SIGINT, signal_handler)
 
     # comment out below line to enable tensorflow logging outputs
     #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -166,7 +178,7 @@ def run_human_tracker(_argv):
     video_path = None
 
     if FLAGS.online:
-        video_path = FLAGS.rstp
+        video_path = FLAGS.rtsp
         print('video_path:', video_path)
         print('cam_id: ' + str(FLAGS.cam_id))
     else:
@@ -184,7 +196,8 @@ def run_human_tracker(_argv):
     infer = saved_model_loaded.signatures['serving_default']
 
     if FLAGS.db:
-        img_db = ImageDB()
+        img_db = ImageDB("./database/Image.db")
+        #img_db = ImageDB("./database/Image_" + str(FLAGS.cam_id) + ".db")
         # img_db.delete_dbfile()
         # img_db.create_table()
 
@@ -219,6 +232,17 @@ def run_human_tracker(_argv):
         fig = plt.figure()
         # 1x1 grid, first subplot
         ax = fig.add_subplot(1, 1, 1)
+
+    def signal_handler(sig, frame):
+        name = mp.current_process().name
+        print(str(name) + ': You pressed Ctrl+C!')
+        vid.release()
+        if FLAGS.output:
+            out.release()
+        cv2.destroyAllWindows()
+        sys.exit(0)
+        
+    signal.signal(signal.SIGINT, signal_handler)
 
     frame_num = 0
     # while video is running
@@ -470,7 +494,8 @@ def run_human_tracker(_argv):
                 plt.legend(loc="upper left")
                 plt.pause(0.000001)
         print("========================= END =========================\n")
-    plt.savefig('soft_threshold.png')
+    if FLAGS.plot_graph:
+        plt.savefig('soft_threshold.png')
     # plt.show()
     vid.release()
     if FLAGS.output:
