@@ -34,6 +34,7 @@ pip install -r requirements-gpu.txt
 ### Nvidia Driver (For GPU, if you are not using Conda Environment and haven't set up CUDA yet)
 Make sure to use CUDA Toolkit version 10.1 as it is the proper version for the TensorFlow version used in this repository.
 https://developer.nvidia.com/cuda-10.1-download-archive-update2
+Note: check out the link for Cuda and Cudnn installation here: https://www.youtube.com/watch?v=2TcnIzJ1RQs
 
 ## Clone repo and set branch
 To clone this repo, use 'git clone', and set to 'human_tracker' branch.
