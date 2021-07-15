@@ -8,3 +8,4 @@ easydict
 pillow
 mediapipe
 openpyxl
+pandas
