@@ -117,8 +117,10 @@ def run_human_tracker(_argv):
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
         try:
+            #tf.config.experimental.set_visible_devices(gpus[0:1], 'GPU')
             # Currently, memory growth needs to be the same across GPUs
             for gpu in gpus:
+                tf.config.experimental.set_visible_devices(gpu, 'GPU')
                 tf.config.experimental.set_memory_growth(gpu, True)
                 # tf.config.experimental.set_virtual_device_configuration(
                 #     gpu,
