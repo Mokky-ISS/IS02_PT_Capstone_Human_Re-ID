@@ -32,12 +32,16 @@ from absl import app, flags, logging
 def camera_capture(*args):
     # assign camera id into new camera process.
     # offline
-    if len(args) == 1:
+    if len(args) == 2:
         flags.DEFINE_integer('cam_id', args[0], 'camera ID to run on different camera')
+        flags.DEFINE_string('db_path', args[1], 'database save path.')
+        print("db_path check: ", args[1])
     # online
     else:
         flags.DEFINE_integer('cam_id', args[0], 'camera ID to run on different camera')
         flags.DEFINE_string('rtsp', args[1], 'rtsp to run on different camera')
+        flags.DEFINE_string('db_path', args[2], 'database save path.')
+        print("db_path check: ", args[2])
     try:
         app.run(run_human_tracker)
     except SystemExit:
@@ -198,7 +202,8 @@ def run_human_tracker(_argv):
     infer = saved_model_loaded.signatures['serving_default']
 
     if FLAGS.db:
-        img_db = ImageDB("./database/Image.db")
+        img_db = ImageDB(FLAGS.db_path)
+        print("db_name: ", FLAGS.db_path)
         #img_db = ImageDB("./database/Image_" + str(FLAGS.cam_id) + ".db")
         # img_db.delete_dbfile()
         # img_db.create_table()
@@ -249,6 +254,7 @@ def run_human_tracker(_argv):
     frame_num = 0
     # while video is running
     while True:
+        start_time = time.time()
         return_value, frame = vid.read()
         if return_value:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -267,7 +273,6 @@ def run_human_tracker(_argv):
         image_data = cv2.resize(frame, (input_size, input_size))
         image_data = image_data / 255.
         image_data = image_data[np.newaxis, ...].astype(np.float32)
-        start_time = time.time()
 
         # run detections
         # with mirrored_strategy.scope():
@@ -466,7 +471,9 @@ def run_human_tracker(_argv):
 
         # calculate frames per second of running detections
         fps = 1.0 / (time.time() - start_time)
+        period = time.time() - start_time
         print("[cam %d] FPS: %.2f" % (FLAGS.cam_id, fps))
+        print("[cam %d] Period: %.2f" % (FLAGS.cam_id, period))
         result = np.asarray(frame)
         result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 

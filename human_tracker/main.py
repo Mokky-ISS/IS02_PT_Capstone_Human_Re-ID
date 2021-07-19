@@ -8,6 +8,7 @@ from absl.flags import FLAGS
 import numpy as np
 import pandas as pd
 import signal, sys
+import datetime
 
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt)')
 flags.DEFINE_string('weights', './checkpoints/yolov4-416',
@@ -26,8 +27,8 @@ flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
 flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
 flags.DEFINE_boolean('db', True, 'save information in database')
 flags.DEFINE_boolean('trajectory', False, 'draw historical trajectories on every tracked human')
-flags.DEFINE_integer('input_skip_frame', 10, 'number of frame to be skipped')
-flags.DEFINE_integer('db_skip_frame', 10, 'number of frame to be skipped')
+flags.DEFINE_integer('input_skip_frame', 8, 'number of frame to be skipped')
+flags.DEFINE_integer('db_skip_frame', 8, 'number of frame to be skipped')
 flags.DEFINE_boolean('saliant_sampling', True, 'select and store unique frame only into database')
 flags.DEFINE_boolean('plot_graph', False, 'plot graph for soft threshold')
 flags.DEFINE_integer('parallel_ps', 2, 'number of human tracker process to run')
@@ -79,21 +80,21 @@ def cam_stream(mps):
         j.join()
 
 
-def sequential_run(batch, mps):
+def sequential_run(batch, db_path, mps):
     mps.job.clear()
     print("batch:", batch)
     for ch in batch:
-        mps.new_job('camera_ch' + ch, camera_capture, int(ch))
+        mps.new_job('camera_ch' + ch, camera_capture, int(ch), db_path)
     for j in mps.job:
         j.start()
     for j in mps.job:
         j.join()
 
-def online_run(rtsp, cam, mps):
+def online_run(rtsp, cam, db_path, mps):
     mps.job.clear()
     for i in range(FLAGS.parallel_ps):
         # cam[i]:int , rtsp[i]:str
-        mps.new_job('camera_ch' + str(cam[i]), camera_capture, cam[i], rtsp[i])
+        mps.new_job('camera_ch' + str(cam[i]), camera_capture, cam[i], rtsp[i], db_path)
         print("New online process for cam " + str(cam[i]))
     for j in mps.job:
         j.start()
@@ -146,15 +147,18 @@ def main(_argv):
     # mps.log_msg()
     print("Parent Process PID: " + str(os.getpid()))
     print("Initialize database..")
+
     # initialize database
-    img_db = ImageDB()
+    db_path = "./database/Image_" + str(datetime.datetime.now().strftime("%Y%m%dT%H%M%S")) + ".db"
+    print("db_path main: ", db_path)
+    img_db = ImageDB(db_path)
     img_db.delete_dbfile()
     img_db.create_table()
 
     # online mode
     if FLAGS.online:
         table = get_rtsp('data/rtsp/rtsp_cam.xlsx')
-        online_run(table.to_dict('dict')['rtsp'], table.to_dict('dict')['cam'], mps)
+        online_run(table.to_dict('dict')['rtsp'], table.to_dict('dict')['cam'], db_path, mps)
     # offline mode
     else:
         if not FLAGS.video.isdigit():      
@@ -169,7 +173,7 @@ def main(_argv):
             print("Start Multiprocessing..")
             # run new camera process
             for batch in ps_list:
-                sequential_run(batch, mps)
+                sequential_run(batch, db_path, mps)
         else:
             cam_stream(mps)
     #mps.new_job('database_ps', db_process)
