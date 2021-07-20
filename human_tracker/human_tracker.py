@@ -431,14 +431,23 @@ def run_human_tracker(_argv):
                     # single patch box (patch_bbox is obtained from DeepSort without 0.5 aspect ratio)
                     patch_bbox = track.to_tlwh()
                     patch_np = gdet.get_img_patch(patch_frame, patch_bbox)
-                    patch_np = cv2.cvtColor(patch_np, cv2.COLOR_RGB2BGR)
+
+                    # Check for blurry image
+                    patch_np_gray = cv2.cvtColor(patch_np, cv2.COLOR_RGB2GRAY)
+                    score = cv2.Laplacian(patch_np_gray, cv2.CV_64F).var()
+                    b_blur = True
+                    if score <= 2500:
+                        b_blur = False
+                     
                     # Check for human image using Pose estimation
+                    patch_np = cv2.cvtColor(patch_np, cv2.COLOR_RGB2BGR)
                     b_pose = check_pose(patch_np, track.track_id)
+                    
                     # https://jdhao.github.io/2019/07/06/python_opencv_pil_image_to_bytes/
                     is_success, im_buf_arr = cv2.imencode(".jpg", patch_np)
                     patch_img = im_buf_arr.tobytes()
 
-                    if b_pose:
+                    if b_pose and b_blur:
                         # export data to database
                         img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np, patch_bbox, frame_num, original_w, original_h)
                         #print("Data Type:", type(frame_num),type(track.track_id),type(patch_img),type(patch_bbox))
