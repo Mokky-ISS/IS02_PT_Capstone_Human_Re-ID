@@ -23,6 +23,7 @@ class MergeDbQuery():
             query = f"SELECT m.img_id AS img_id, m.is_correct AS is_correct, h.human_id AS human_id, i.query_img AS img FROM {self.correctlabel_table} AS m"
             query += " INNER JOIN human_table AS h ON h.img_id=m.img_id"
             query += " INNER JOIN inference_table AS i ON h.img_id=i.query_img_id"
+            query += " where m.is_correct == 1"
             df_list = []
             for dbQuery in self.dbQueries:
                 df = dbQuery.query_data(query)
