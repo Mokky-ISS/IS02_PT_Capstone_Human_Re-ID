@@ -83,6 +83,8 @@ def run_human_tracker(_argv):
     from deep_sort.tracker import Tracker
     from deep_sort.detection import Detection
     from deep_sort import preprocessing, nn_matching
+    # reid imports
+    from reid.reid_inference import Reid
     # system packages
     import time
     import os
@@ -239,6 +241,10 @@ def run_human_tracker(_argv):
         fig = plt.figure()
         # 1x1 grid, first subplot
         ax = fig.add_subplot(1, 1, 1)
+
+    # initialize reid
+    if FLAGS.reid:
+        reid = Reid()
 
     def signal_handler(sig, frame):
         name = mp.current_process().name
@@ -448,9 +454,13 @@ def run_human_tracker(_argv):
                     patch_img = im_buf_arr.tobytes()
 
                     if b_pose and b_blur:
-                        # export data to database
-                        img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np, patch_bbox, frame_num, original_w, original_h)
-                        #print("Data Type:", type(frame_num),type(track.track_id),type(patch_img),type(patch_bbox))
+                        if FLAGS.reid:
+                            # run reid inference process
+                            reid.run()
+                        else:
+                            # export data to database
+                            img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np, patch_bbox, frame_num, original_w, original_h)
+                            #print("Data Type:", type(frame_num),type(track.track_id),type(patch_img),type(patch_bbox))
 
                     # Reset unique_same_human bool state
                     track.unique_same_human = False

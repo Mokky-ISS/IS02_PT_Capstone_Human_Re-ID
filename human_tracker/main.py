@@ -33,6 +33,7 @@ flags.DEFINE_boolean('saliant_sampling', True, 'select and store unique frame on
 flags.DEFINE_boolean('plot_graph', False, 'plot graph for soft threshold')
 flags.DEFINE_integer('parallel_ps', 2, 'number of human tracker process to run')
 flags.DEFINE_boolean('online', False, 'run online image extraction using rtsp')
+flags.DEFINE_boolean('reid', False, 'set to True to run with REID, set to False if new labelled data are needed to be recorded')
 
 def db_process():
     pass
