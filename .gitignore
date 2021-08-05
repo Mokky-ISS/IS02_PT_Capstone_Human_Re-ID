@@ -128,4 +128,13 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-/data
+# human_tracker ignored files
+*.weights
+*.mp4
+*.avi
+*.gif
+*.db
+*.jpg
+!**/helpers/*.jpg
+checkpoints/
+*.pth

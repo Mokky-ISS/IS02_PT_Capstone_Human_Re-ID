@@ -1,0 +1,10 @@
+#camera ID
+#timestamp sytem file
+#img_ID = str(camera_ID + track id + timestamp)
+
+#reID database
+#img_ID (query)
+
+#1 fps
+create universal ID for person in every camera.
+
