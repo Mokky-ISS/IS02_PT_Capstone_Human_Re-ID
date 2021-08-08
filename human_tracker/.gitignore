@@ -1,0 +1,10 @@
+# human_tracker ignored files
+*.weights
+*.mp4
+*.avi
+*.gif
+*.db
+*.jpg
+!**/helpers/*.jpg
+checkpoints/
+*.pth

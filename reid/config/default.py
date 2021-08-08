@@ -61,18 +61,3 @@ class DefaultConfig:
         self.WARMUP_EPOCHS = 10  # warm up epochs
         self.WARMUP_METHOD = "linear"  # option: 'linear','constant'
 
-        # test
-        self.TEST_IMS_PER_BATCH = 128
-        self.FEAT_NORM = True
-        self.TEST_WEIGHT = '../resource/resnet50_200.pth'
-        self.DIST_MAT = "dist_mat.npy"
-        self.PIDS = "pids.npy"
-        self.CAMIDS = "camids.npy"
-        self.IMG_PATH = "imgpath.npy"
-        self.Q_FEATS = "qfeats.pth"  # query feats
-        self.G_FEATS = "gfeats.pth"  # gallery feats
-        self.TEST_METHOD = 'euclidean'
-        self.FLIP_FEATS = 'on'  # using fliped feature for testing, option: 'on', 'off'
-        self.RERANKING = False  # re-ranking
-        self.QUERY_DIR = '../resource/market1501/query'
-        self.GALLERY_DIR = '../resource/market1501/bounding_box_test'

@@ -3,9 +3,11 @@ import os
 import numpy as np
 import cv2
 from PIL import Image
+import math
 import matplotlib.pyplot as plt
 from config import Config
-from utils.to_sqlite import insert_vector_db, insert_human_db, insert_infer_db, load_gallery_from_db, convertToBinaryData, load_human_db
+from utils.to_sqlite import insert_vector_db, insert_human_db, insert_infer_db, load_gallery_from_db, convertToBinaryData, load_human_db, convertImgtoBlob, convertBlobtoIMG
+from utils.reranking import re_ranking
 
 from model import make_model
 from torch.backends import cudnn
@@ -13,11 +15,10 @@ import torchvision.transforms as T
 from utils.metrics import cosine_similarity, euclidean_distance
 import pickle
 
+
 class reid_inference:
     """Reid Inference class.
     """
-
-
 
     def __init__(self):
         cudnn.benchmark = True
@@ -34,7 +35,7 @@ class reid_inference:
         self.model.eval()
         print('Ready to Eval')
         print('Loading from DB...')
-        self.all_img_path, self.all_gal_feat = load_gallery_from_db() #load from vectorkb_table
+        self.all_img_id, self.all_patch_img, self.all_gal_feat, self.all_cam_id = load_gallery_from_db() #load from vectorkb_table
         self.human_dict = load_human_db()
         self._tmp_img = ""
         self._tmp_galfeat = ""
@@ -42,13 +43,19 @@ class reid_inference:
     
 
 
-    def to_gallery_feat(self, image_path, flip=True, norm=True):
+    def to_gallery_feat(self, img_id, image_patch_or_path, flip=True, norm=True):
         """
         Use to build gallery feat on images picked from Deep Sort.
         This is different from normal query feature extraction as this has flipped & normed feature,
         to improve the matching precision.
+        Takes image path or PIL image directly.
+        To be combined with INFER function at the end of troubleshooting
         """
-        query_img = Image.open(image_path)
+        if type(image_patch_or_path) is str:
+            query_img = Image.open(image_patch_or_path)
+        else:
+            query_img = image_patch_or_path
+        
         input = torch.unsqueeze(self.transform(query_img), 0)
         input = input.to('cuda')
         with torch.no_grad():
@@ -66,21 +73,32 @@ class reid_inference:
             if norm:
                 gal_feat = torch.nn.functional.normalize(gal_feat, dim=1, p=2)
 
-            self._tmp_img = image_path
-            self._tmp_galfeat = gal_feat
+            query_img_blob = convertImgtoBlob(query_img)
+            cam_id = img_id.split('_')[0]
+            track_id = img_id.split('_')[1]
+            insert_vector_db(img_id, query_img_blob, pickle.dumps(gal_feat), cam_id, track_id)
+            self.all_img_id.append(img_id)
+            self.all_patch_img.append(query_img)
+            self.all_gal_feat = torch.cat([self.all_gal_feat, gal_feat])
+            self.all_cam_id.append(cam_id)
+
             return gal_feat
 
 
 
-    def to_query_feat(self, image_path):
+
+    def to_query_feat(self, image_patch_or_path):
         """
         image - input image path.
         for finding query feature, no flipping and normalization is done.
         This function returns feature (1,2048) tensor.
 
-        **considering keeping this query_feat into db as currently there is no storage of this data
         """
-        query_img = Image.open(image_path)
+        if type(image_patch_or_path) is str:
+            query_img = Image.open(image_patch_or_path)
+        else:
+            query_img = image_patch_or_path
+
         input = torch.unsqueeze(self.transform(query_img), 0)
         input = input.to('cuda')
         with torch.no_grad():
@@ -89,63 +107,33 @@ class reid_inference:
 
 
 
-    def infer(self, query_feat, query_img_path, top_k= 3, to_db=True):
 
+    def infer(self, query_feat, thres= 0.6, reranking = True, rerank_range = 50):
+
+        #cosine
         dist_mat = torch.nn.functional.cosine_similarity(query_feat, self.all_gal_feat).cpu().numpy()
-        indices = np.argsort(dist_mat)[::-1]
+        indices = np.argsort(dist_mat)[::-1][:rerank_range] #to test if use 50 or use all better
+        
+        if reranking:
+            candidate_gal_feat = torch.index_select(self.all_gal_feat, 0, torch.tensor([indices]).cuda()[0])
+            rerank_dist = re_ranking(query_feat, candidate_gal_feat, k1=30, k2=6, lambda_value=0.3)[0]
+            rerank_idx = np.argsort(1-rerank_dist)[::-1]
+            indices = np.array([indices[i] for i in rerank_idx])
+            rerank_dist_ind = np.array([rerank_dist[i] for i in rerank_idx])
 
-        if to_db:
-            #if match found --> insert to human_table, need a human list too. make it into class
-            #if no match found --> insert new identity to human_table.
-            if dist_mat[indices[0]] >= self.Cfg.THRESHOLD:
-                #match found
-                matched_img_id = self.all_img_path[indices[0]].split('/')[-1]
-                identity = self.human_dict[matched_img_id]
-                print(f"Match found! Identity is {identity}")
+        all_result = []
+        for idx, i in enumerate(indices):
+            if dist_mat[i] < thres:
+                continue
+            
+            tmp = dict()
+            tmp['idx'] = i
+            tmp['cam_id'] = self.all_cam_id[i]
+            tmp['img_id'] = self.all_img_id[i]
+            tmp['dist'] = dist_mat[i]
+            tmp['rerank_dist'] = rerank_dist_ind[idx]
+            tmp['ranking'] = idx
+            
 
-                #insert to human_table & dict
-                query_img_id = query_img_path.split('/')[-1]
-                insert_human_db(query_img_id, identity)
-                self.human_dict[query_img_id] = identity
-            else:
-                #no match found
-                new_identity = str(int(max(self.human_dict.values()))+1)
-                print(f"No match found! Creating new identity -- {new_identity}")
-
-                #insert to human_table & dict
-                query_img_id = query_img_path.split('/')[-1]
-                insert_human_db(query_img_id, new_identity)
-                self.human_dict[query_img_id] = new_identity
-
-            #insert query image to gallery table & list
-            insert_vector_db(query_img_id, query_img_path, convertToBinaryData(query_img_path), pickle.dumps(self._tmp_galfeat) )
-            self.all_img_path.append(query_img_path)
-            self.all_gal_feat = torch.cat([self.all_gal_feat, self._tmp_galfeat])
-
-            record = [query_img_path.split('/')[-1],convertToBinaryData(query_img_path)]
-            #query_img_id, match_1_img_id, match_1_img, match_1_dist, match_2_img_id,match_2_img, match_2_dist, match_3_img_id, match_3_img, match_3_dist
-            for k in range(top_k):
-                if dist_mat[indices[k]] >= self.Cfg.THRESHOLD:
-                    record.append(self.all_img_path[indices[k]].split('/')[-1])
-                    record.append(convertToBinaryData(self.all_img_path[indices[k]]))
-                    record.append(dist_mat.item(indices[k]))
-                else:
-                    record.append(None)
-                    record.append(None)
-                    record.append(None)
-            insert_infer_db(record)
-        else:
-            plt.subplot(1, top_k+2, 1)
-            plt.title('Query')
-            plt.axis('off')
-            query_img = Image.open(query_img_path)
-            plt.imshow(np.asarray(query_img))
-
-            for k in range(top_k):
-                plt.subplot(1, top_k+2, k+3)
-                name = str(indices[k]) + '\n' + '{0:.2f}'.format(dist_mat[indices[k]])
-                img = np.asarray(Image.open(self.all_img_path[indices[k]]))
-                plt.title(name)
-                plt.axis('off')
-                plt.imshow(img)
-            plt.show()
+            all_result.append(tmp)
+        return all_result

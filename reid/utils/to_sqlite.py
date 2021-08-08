@@ -2,19 +2,22 @@ import sqlite3
 from sqlite3 import Error
 import pickle
 import torch
+from PIL import Image
+import io
 
 
-def insert_vector_db(img_id, image_path, img, feat_vec):
+
+def insert_vector_db(img_id, img, feat_vec, cam_id, track_id):
     try:
         sqliteConnection = sqlite3.connect('reid_db.db')
         cursor = sqliteConnection.cursor()
     
         Query = """
-            INSERT INTO vectorkb_table (img_id, img_path, img, vector_tensor) 
-            VALUES (?,?,?,?)
+            INSERT INTO vectorkb_table (img_id, img, vector_tensor, cam_id, track_id) 
+            VALUES (?,?,?,?,?)
             """
 
-        array = (img_id, image_path, img, feat_vec)
+        array = (img_id, img, feat_vec, cam_id, track_id)
         Query = cursor.execute(Query, array)
         sqliteConnection.commit()
 
@@ -25,17 +28,17 @@ def insert_vector_db(img_id, image_path, img, feat_vec):
         print("Connection error to vector table", err)
 
 
-def insert_human_db(img_id, human_id):
+def insert_human_db(img_id, human_id, inf_type):
     try:
         sqliteConnection = sqlite3.connect('reid_db.db')
         cursor = sqliteConnection.cursor()
     
         Query = """
-            INSERT INTO human_table (img_id, human_id) 
-            VALUES (?,?)
+            INSERT INTO human_table (img_id, human_id, type) 
+            VALUES (?,?,?)
             """
 
-        array = (img_id, human_id)
+        array = (img_id, human_id, inf_type)
         Query = cursor.execute(Query, array)
         sqliteConnection.commit()
 
@@ -75,20 +78,55 @@ def unpickle_blob(blob):
         return pickle.loads(blob)
 
 
+def convertBlobtoIMG(blob):
+    # to convert blob to PIL image
+    if type(blob) is list:
+        return [Image.open(io.BytesIO(i)) for i in blob]
+    else:
+        return Image.open(io.BytesIO(blob))
+
+
+def convertImgtoBlob(PIL):
+    # to convert PIL image back to blob
+    if type(PIL) is list:
+        blob_list = []
+        for each in PIL:
+            stream = io.BytesIO()
+            each.save(stream, format="JPEG")
+            blob_list.append(stream.getvalue())
+    else:
+        stream = io.BytesIO()
+        PIL.save(stream, format="JPEG")
+        return stream.getvalue()
+
+
+def convertToBinaryData(filename):
+    # to convert image path to blob
+    with open(filename, 'rb') as file:
+        blobData = file.read()
+    return blobData
+
+
 
 def load_gallery_from_db():
     try:
         sqliteConnection = sqlite3.connect('reid_db.db')
         cursor = sqliteConnection.cursor()
 
-        cursor.execute("select img_path, vector_tensor from vectorkb_table")
+        cursor.execute("select img_id, img, vector_tensor, cam_id from vectorkb_table")
         result = cursor.fetchall()
-        img_path =list(list(zip(*result))[0])
-        gal_feat = unpickle_blob(list(list(zip(*result))[1]))
+        img_id =list(list(zip(*result))[0])
+        patch_img = convertBlobtoIMG(list(list(zip(*result))[1]))
+        gal_feat = unpickle_blob(list(list(zip(*result))[2]))
+        cam_id =list(list(zip(*result))[3])
 
         cursor.close()
         sqliteConnection.close()
-        return img_path, gal_feat
+        return img_id, patch_img, gal_feat, cam_id
+
+    except IndexError:
+        #empty table
+        return [],[],torch.tensor([]).cuda(),[]
 
     except Error as err:
         print("Connection error to Sql", err)
@@ -111,9 +149,29 @@ def load_human_db():
         print("Connection error to Sql", err)
 
 
-def convertToBinaryData(filename):
-    with open(filename, 'rb') as file:
-        blobData = file.read()
-    return blobData
 
 
+#####################################
+# -- EXTRACT IMAGES FROM DB (TEST)  #
+#####################################
+
+
+
+def load_images_from_db(db='reid_db.db', table = 'vectorkb_table'):
+    try:
+        sqliteConnection = sqlite3.connect(db)
+        cursor = sqliteConnection.cursor()
+
+        cursor.execute(f"select img_id, cam_id, patch_img from {table}")
+        result = cursor.fetchall()
+        img_id  = list(list(zip(*result))[0])
+        cam_id  = list(list(zip(*result))[1])
+        img_list = convertBlobtoIMG(list(list(zip(*result))[2]))
+        
+
+        cursor.close()
+        sqliteConnection.close()
+        return img_id, cam_id, img_list
+
+    except Error as err:
+        print("Connection error to Sql", db, err)
