@@ -5,11 +5,11 @@ import torch
 from PIL import Image
 import io
 
-
+db_path = '../reid/reid_db.db'
 
 def insert_vector_db(img_id, img, feat_vec, cam_id, track_id):
     try:
-        sqliteConnection = sqlite3.connect('reid_db.db')
+        sqliteConnection = sqlite3.connect(db_path)
         cursor = sqliteConnection.cursor()
     
         Query = """
@@ -30,7 +30,7 @@ def insert_vector_db(img_id, img, feat_vec, cam_id, track_id):
 
 def insert_human_db(img_id, human_id, inf_type):
     try:
-        sqliteConnection = sqlite3.connect('reid_db.db')
+        sqliteConnection = sqlite3.connect(db_path)
         cursor = sqliteConnection.cursor()
     
         Query = """
@@ -52,7 +52,7 @@ def insert_human_db(img_id, human_id, inf_type):
 
 def insert_infer_db(record):
     try:
-        sqliteConnection = sqlite3.connect('reid_db.db')
+        sqliteConnection = sqlite3.connect(db_path)
         cursor = sqliteConnection.cursor()
     
         Query = """
@@ -110,7 +110,7 @@ def convertToBinaryData(filename):
 
 def load_gallery_from_db():
     try:
-        sqliteConnection = sqlite3.connect('reid_db.db')
+        sqliteConnection = sqlite3.connect(db_path)
         cursor = sqliteConnection.cursor()
 
         cursor.execute("select img_id, img, vector_tensor, cam_id from vectorkb_table")
@@ -134,7 +134,7 @@ def load_gallery_from_db():
 
 def load_human_db():
     try:
-        sqliteConnection = sqlite3.connect('reid_db.db')
+        sqliteConnection = sqlite3.connect(db_path)
         cursor = sqliteConnection.cursor()
 
         cursor.execute("select img_id, human_id from human_table")
@@ -157,7 +157,7 @@ def load_human_db():
 
 
 
-def load_images_from_db(db='reid_db.db', table = 'vectorkb_table'):
+def load_images_from_db(db=db_path, table = 'vectorkb_table'):
     try:
         sqliteConnection = sqlite3.connect(db)
         cursor = sqliteConnection.cursor()

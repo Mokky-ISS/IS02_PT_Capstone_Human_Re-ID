@@ -10,4 +10,5 @@ Information about this project:
 Inference Process Flow:
 ![image](https://user-images.githubusercontent.com/39640791/113481779-23385400-94ce-11eb-8b09-11b14f64203c.png)
 
+Please download the reid.db from https://drive.google.com/drive/folders/1D87_kBysF9ejQOc7NAtcP1LIOSKe5Kvo?usp=sharing, and place it in [Root Folder]/reid folder. Download the .pth models from https://drive.google.com/drive/folders/1cU91k_cep1uheJLUR470IpgiUnUAk6zP?usp=sharing, and place them into [Root Folder]/reid/model folder. 
 

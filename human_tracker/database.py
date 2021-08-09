@@ -13,9 +13,10 @@ class ImageDB(object):
         self.cursor = None
         self.db_path = db_name
         #self.db_path = "./database/Image_complete.db"
-        self.table_name = "VectorKB_Table"
+        self.table_name = "vectorkb_table"
         # change the default column title here
-        self.col_titles = "(img_id INT, cam_id INT, timestamp TIMESTAMP, track_id INT, patch_img BLOB, patch_np array, patch_bbox array, frame_num INT, img_res_width INT, img_res_height INT)"
+        #self.col_titles = "(img_id INT, cam_id INT, timestamp TIMESTAMP, track_id INT, patch_img BLOB, patch_np array, patch_bbox array, frame_num INT, img_res_width INT, img_res_height INT)"
+        self.col_titles = "(img_id INT, patch_img BLOB, patch_np array, timestamp TIMESTAMP, cam_id INT, track_id INT)"
         self.data = None
         self.image_name = []
         # Converts np.array to TEXT when inserting
@@ -47,6 +48,11 @@ class ImageDB(object):
         timestamp = datetime.datetime.now()
         time_filename = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
         return timestamp, time_filename
+
+    def get_imgid(self, cam_id, track_id):
+        timestamp, time_filename = self.get_timestamp()
+        img_id = str(cam_id) + '_' + str(track_id) + '_' + str(time_filename) 
+        return img_id
 
     def load_directory(self, path='.'):
         for x in os.listdir(path):
@@ -80,11 +86,23 @@ class ImageDB(object):
         self.cursor.execute(command)
 
     @_con_sqlite
-    def insert_data(self, cam_id, track_id, patch_img, patch_np, patch_bbox, frame_num, img_res_width, img_res_height):
+    def insert_data_old(self, cam_id, track_id, patch_img, patch_np, patch_bbox, frame_num, img_res_width, img_res_height):
         timestamp, time_filename = self.get_timestamp()
         img_id = str(cam_id) + '_' + str(track_id) + '_' + str(time_filename) + '_' + str(frame_num)
         # change the input column data here
         col = ("img_id", "cam_id", "timestamp", "track_id", "patch_img", "patch_np", "patch_bbox", "frame_num", "img_res_width", "img_res_height")
+        col_str = '('+', '.join(col) + ')'
+        command = ' '.join(("INSERT INTO", self.table_name, col_str, "VALUES (", ','.join(('?'*len(col))), ")"))
+        print(command, col_str)
+        # eval converts string tuple to tuple e.g. "(img_id,cam_id)" => (img_id, cam_id)
+        self.cursor.execute(command, eval(col_str))
+
+    @_con_sqlite
+    def insert_data(self, cam_id, track_id, patch_img, patch_np):
+        timestamp, time_filename = self.get_timestamp()
+        img_id = self.get_imgid(cam_id, track_id)
+        # change the input column data here
+        col = ("img_id", "patch_img", "patch_np", "timestamp", "cam_id", "track_id")
         col_str = '('+', '.join(col) + ')'
         command = ' '.join(("INSERT INTO", self.table_name, col_str, "VALUES (", ','.join(('?'*len(col))), ")"))
         print(command, col_str)

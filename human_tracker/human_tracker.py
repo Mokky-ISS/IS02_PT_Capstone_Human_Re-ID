@@ -84,7 +84,7 @@ def run_human_tracker(_argv):
     from deep_sort.detection import Detection
     from deep_sort import preprocessing, nn_matching
     # reid imports
-    from reid.reid_inference import Reid
+    from reid_inference import Reid
     # system packages
     import time
     import os
@@ -456,10 +456,13 @@ def run_human_tracker(_argv):
                     if b_pose and b_blur:
                         if FLAGS.reid:
                             # run reid inference process
-                            reid.run()
+                            img_id = img_db.get_imgid(FLAGS.cam_id, track.track_id)
+                            reid.run(img_id, patch_img)
+                            img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np)
                         else:
                             # export data to database
-                            img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np, patch_bbox, frame_num, original_w, original_h)
+                            img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np)
+                            #img_db.insert_data_old(FLAGS.cam_id, track.track_id, patch_img, patch_np, patch_bbox, frame_num, original_w, original_h)
                             #print("Data Type:", type(frame_num),type(track.track_id),type(patch_img),type(patch_bbox))
 
                     # Reset unique_same_human bool state
