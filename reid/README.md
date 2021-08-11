@@ -12,3 +12,5 @@ Inference Process Flow:
 
 Please download the reid.db from https://drive.google.com/drive/folders/1D87_kBysF9ejQOc7NAtcP1LIOSKe5Kvo?usp=sharing, and place it in [Root Folder]/reid folder. Download the .pth models from https://drive.google.com/drive/folders/1cU91k_cep1uheJLUR470IpgiUnUAk6zP?usp=sharing, and place them into [Root Folder]/reid/model folder. 
 
+Install Pytorch: pip install torch==1.7.1+cu101 torchvision==0.8.2+cu101 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
+

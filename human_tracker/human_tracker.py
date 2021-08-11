@@ -458,7 +458,7 @@ def run_human_tracker(_argv):
                             # run reid inference process
                             img_id = img_db.get_imgid(FLAGS.cam_id, track.track_id)
                             reid.run(img_id, patch_img)
-                            img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np)
+                            #img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np)
                         else:
                             # export data to database
                             img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np)
