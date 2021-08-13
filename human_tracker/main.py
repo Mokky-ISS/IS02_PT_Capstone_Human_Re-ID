@@ -8,7 +8,8 @@ from absl.flags import FLAGS
 import numpy as np
 import pandas as pd
 import signal, sys
-import datetime
+import datetime as dt
+import shutil
 
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt)')
 flags.DEFINE_string('weights', './checkpoints/yolov4-416',
@@ -17,6 +18,7 @@ flags.DEFINE_integer('size', 416, 'resize images to')
 flags.DEFINE_boolean('tiny', False, 'yolo or yolo-tiny')
 flags.DEFINE_string('model', 'yolov4', 'yolov3 or yolov4')
 flags.DEFINE_string('video', './data/video/', 'path to input video or set to 0 for webcam')
+flags.DEFINE_string('reid_db_path', '../reid/reid_db.db', 'default reid database path, where all of the samples from cam are saved into the db')
 #flags.DEFINE_string('output', './outputs/', 'path to output video')
 flags.DEFINE_boolean('output', False, 'path to output video')
 flags.DEFINE_string('output_format', 'MJPG', 'codec used in VideoWriter when saving video to file')
@@ -69,6 +71,13 @@ class MultiPs():
         print('Main Program: You pressed Ctrl+C!')
         for j in self.job:
             j.join()
+
+        # save db if the process is interrupted halfway.
+        now = dt.datetime.now()
+        db_name = now.strftime("Reid_Interrupted_%Y%m%d.db")
+        db_filepath = os.path.join("../reid/database", db_name).replace("\\","/")
+        shutil.copy2(FLAGS.reid_db_path, db_filepath)
+        print("Reid interrupted database file is saved at: ", db_filepath)
 
         sys.exit(0)
 
@@ -149,8 +158,8 @@ def main(_argv):
     print("Parent Process PID: " + str(os.getpid()))
     print("Initialize database..")
 
-    # initialize database
-    db_path = "./database/Image_" + str(datetime.datetime.now().strftime("%Y%m%dT%H%M%S")) + ".db"
+    # initialize backup database
+    db_path = "./database/Image_" + str(dt.datetime.now().strftime("%Y%m%dT%H%M%S")) + ".db"
     print("db_path main: ", db_path)
     img_db = ImageDB(db_path)
     img_db.delete_dbfile()

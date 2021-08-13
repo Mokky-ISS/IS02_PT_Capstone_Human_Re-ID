@@ -8,6 +8,7 @@ dependencies:
   - cudnn
   - cudatoolkit==10.1.243
   - pip:
+    # Human tracker packages
     - tensorflow-gpu==2.3.0rc0
     - opencv-python==4.1.1.26
     - lxml
@@ -18,7 +19,11 @@ dependencies:
     - mediapipe
     - openpyxl
     - pandas
+    # Reid packages
     - -f https://download.pytorch.org/whl/torch_stable.html
     - torch==1.7.1+cu101
     - torchvision==0.8.2+cu101
     - torchaudio==0.7.2
+    # User Interface packages
+    - dash
+    - dash-bootstrap-components

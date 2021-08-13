@@ -16,7 +16,8 @@ class ImageDB(object):
         self.table_name = "vectorkb_table"
         # change the default column title here
         #self.col_titles = "(img_id INT, cam_id INT, timestamp TIMESTAMP, track_id INT, patch_img BLOB, patch_np array, patch_bbox array, frame_num INT, img_res_width INT, img_res_height INT)"
-        self.col_titles = "(img_id INT, patch_img BLOB, patch_np array, timestamp TIMESTAMP, cam_id INT, track_id INT)"
+        # Important: Make sure the created column name in new table is same as the selected column name during selection by load_gallery_from_db from reid/utils/to_sqlite.py!
+        self.col_titles = "(img_id INT, img BLOB, vector_tensor array, create_datetime TIMESTAMP, cam_id INT, track_id INT)"
         self.data = None
         self.image_name = []
         # Converts np.array to TEXT when inserting

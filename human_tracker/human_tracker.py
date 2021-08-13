@@ -87,9 +87,12 @@ def run_human_tracker(_argv):
     from reid_inference import Reid
     # system packages
     import time
+    import datetime as dt
     import os
     import multiprocessing as mp
     import sys, signal
+    import shutil
+    import schedule
     # tensorflow packages
     import tensorflow as tf
     from tensorflow.compat.v1 import InteractiveSession
@@ -103,16 +106,6 @@ def run_human_tracker(_argv):
     import cv2
     from PIL import Image
     from collections import deque
-
-    # def signal_handler(sig, frame):
-    #     name = mp.current_process().name
-    #     print(str(name) + ': You pressed Ctrl+C!')
-    #     vid.release()
-    #     if FLAGS.output:
-    #         out.release()
-    #     cv2.destroyAllWindows()
-    #     sys.exit(0)
-    # signal.signal(signal.SIGINT, signal_handler)
 
     # comment out below line to enable tensorflow logging outputs
     #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -244,6 +237,9 @@ def run_human_tracker(_argv):
 
     # initialize reid
     if FLAGS.reid:
+        reid_db = ImageDB(db_name=FLAGS.reid_db_path)
+        reid_db.delete_dbfile()
+        reid_db.create_table() 
         reid = Reid()
 
     def signal_handler(sig, frame):
@@ -252,14 +248,42 @@ def run_human_tracker(_argv):
         vid.release()
         if FLAGS.output:
             out.release()
+
         cv2.destroyAllWindows()
         sys.exit(0)
         
     signal.signal(signal.SIGINT, signal_handler)
 
+    save = True 
+    reset = False
     frame_num = 0
     # while video is running
     while True:
+        now = dt.datetime.now()
+        t = now.timetuple()
+        # t[6] consists of day name information. 0 = Monday. 4 = Friday.
+        if t[6] > 4:
+            if save:
+                # copy the database with timestamp, and copy the db once only.
+                db_name = now.strftime("Reid_%Y%m%d.db")
+                db_filepath = os.path.join("../reid/database", db_name)
+                shutil.copy2(FLAGS.reid_db_path, db_filepath)
+                print("Reid database file is saved at: ", db_filepath)
+                save = False
+                reset = True
+
+            # during weekend, this tracker will sleep, and check for time every hour.
+            print("Standby during weekend [", now.strftime("%A, %d. %B %Y %I:%M%p"), ']')   
+            time.sleep(1*60*60)
+            continue 
+        else:
+            if reset:
+                # reset database record and reset it once
+                reid_db.delete_dbfile()
+                reid_db.create_table() 
+                reset = False
+                save = True       
+
         start_time = time.time()
         return_value, frame = vid.read()
         if return_value:
