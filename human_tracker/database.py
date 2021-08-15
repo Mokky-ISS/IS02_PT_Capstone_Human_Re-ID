@@ -122,20 +122,20 @@ class ImageDB(object):
         self.data = self.cursor.fetchall()
 
     # link: https://stackoverflow.com/questions/11653267/merge-tables-from-two-different-databases-sqlite3-python
-    # @_con_sqlite  # only use this method in main database!
-    # def merge_data(self, db_lists):
-    #     for db in db_lists:
-    #         db_cam = sqlite3.connect(db, detect_types=sqlite3.PARSE_DECLTYPES |
-    #                                     sqlite3.PARSE_COLNAMES)
-    #         db_cursor = db_cam.cursor()
-    #         command = 'SELECT * FROM ' + self.table_name
-    #         db_cursor.execute(command)
-    #         output = db_cursor.fetchall()   # Returns the results as a list.
-    #         # Insert those contents into another table.
-    #         for row in output:
-    #             self.cursor.execute('INSERT INTO ' + self.table_name + ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', row)
-    #         # Cleanup
-    #         db_cursor.close()
+    @_con_sqlite  # only use this method in main database!
+    def merge_data(self, db_lists):
+        for db in db_lists:
+            db_cam = sqlite3.connect(db, detect_types=sqlite3.PARSE_DECLTYPES |
+                                        sqlite3.PARSE_COLNAMES)
+            db_cursor = db_cam.cursor()
+            command = 'SELECT * FROM ' + self.table_name
+            db_cursor.execute(command)
+            output = db_cursor.fetchall()   # Returns the results as a list.
+            # Insert those contents into another table.
+            for row in output:
+                self.cursor.execute('INSERT INTO ' + self.table_name + ' VALUES (?, ?, ?, ?, ?, ?)', row)
+            # Cleanup
+            db_cursor.close()
 
     # SAMPLE METHOD JUST FOR REFERENCE, DONT RUN THIS METHOD!
     # @_con_sqlite

@@ -20,8 +20,8 @@ import time
 #imgid = img_id[0]
 
 class Reid():
-    def __init__(self):
-        self.reid = reid_inference()     
+    def __init__(self, cam_path):
+        self.reid = reid_inference(cam_path)     
 
     def run(self, imgid, img):
         start_time = time.time()

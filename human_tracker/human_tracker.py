@@ -26,24 +26,30 @@
 from absl.flags import FLAGS
 from absl import app, flags, logging
 
+db_queue = None
+
 # child process from main.py
-
-
 def camera_capture(*args):
     # assign camera id into new camera process.
     # offline
-    if len(args) == 2:
+    if len(args) == 3:
         flags.DEFINE_integer('cam_id', args[0], 'camera ID to run on different camera')
         flags.DEFINE_string('db_path', args[1], 'database save path.')
         print("db_path check: ", args[1])
+        global db_queue
+        db_queue = args[2]
     # online
     else:
         flags.DEFINE_integer('cam_id', args[0], 'camera ID to run on different camera')
         flags.DEFINE_string('rtsp', args[1], 'rtsp to run on different camera')
         flags.DEFINE_string('db_path', args[2], 'database save path.')
         print("db_path check: ", args[2])
+        global db_queue
+        db_queue = args[3]
     try:
         app.run(run_human_tracker)
+        # In the app.run() argument, include tuple arguments after the target function to fill in the _argv  
+        # e.g. app.run(run_human_tracker, ("test",))
     except SystemExit:
         pass
 
@@ -73,7 +79,7 @@ def run_human_tracker_1(_argv):
 def run_human_tracker(_argv):
     # Every neccessary packages must be imported within the child process instead of parent process,
     # to avoid error of "could not retrieve CUDA device count: CUDA_ERROR_NOT_INITIALIZED: initialization error"
-
+    
     # export to database
     from database import ImageDB
     # check human pose
@@ -235,12 +241,13 @@ def run_human_tracker(_argv):
         # 1x1 grid, first subplot
         ax = fig.add_subplot(1, 1, 1)
 
-    # initialize reid
+    # initialize reid (individual camera database)
     if FLAGS.reid:
-        reid_db = ImageDB(db_name=FLAGS.reid_db_path)
+        cam_path = FLAGS.cam_db_path + "/Cam_" + str(FLAGS.cam_id) + ".db"
+        reid_db = ImageDB(db_name=cam_path)
         reid_db.delete_dbfile()
         reid_db.create_table() 
-        reid = Reid()
+        reid = Reid(cam_path)
 
     def signal_handler(sig, frame):
         name = mp.current_process().name
@@ -265,10 +272,12 @@ def run_human_tracker(_argv):
         if t[6] > 4:
             if save:
                 # copy the database with timestamp, and copy the db once only.
-                db_name = now.strftime("Reid_%Y%m%d.db")
-                db_filepath = os.path.join("../reid/database", db_name)
-                shutil.copy2(FLAGS.reid_db_path, db_filepath)
-                print("Reid database file is saved at: ", db_filepath)
+                #db_name = now.strftime("Reid_%Y%m%d.db")
+                #db_filepath = os.path.join("../reid/database", db_name)
+                #shutil.copy2(FLAGS.reid_db_path, db_filepath)
+                #print("Reid database file is saved at: ", db_filepath)
+                global db_queue
+                db_queue.put(cam_path)
                 save = False
                 reset = True
 

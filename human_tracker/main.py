@@ -10,6 +10,7 @@ import pandas as pd
 import signal, sys
 import datetime as dt
 import shutil
+import time
 
 flags.DEFINE_string('framework', 'tf', '(tf, tflite, trt)')
 flags.DEFINE_string('weights', './checkpoints/yolov4-416',
@@ -18,7 +19,8 @@ flags.DEFINE_integer('size', 416, 'resize images to')
 flags.DEFINE_boolean('tiny', False, 'yolo or yolo-tiny')
 flags.DEFINE_string('model', 'yolov4', 'yolov3 or yolov4')
 flags.DEFINE_string('video', './data/video/', 'path to input video or set to 0 for webcam')
-flags.DEFINE_string('reid_db_path', '../reid/reid_db.db', 'default reid database path, where all of the samples from cam are saved into the db')
+flags.DEFINE_string('cam_db_path', '../reid/database', 'default cam database path')
+flags.DEFINE_string('merge_db_path', "../reid/database/merge", 'default merged reid database path, where all of the samples from cam are saved into the db with timestamp')
 #flags.DEFINE_string('output', './outputs/', 'path to output video')
 flags.DEFINE_boolean('output', False, 'path to output video')
 flags.DEFINE_string('output_format', 'MJPG', 'codec used in VideoWriter when saving video to file')
@@ -37,15 +39,30 @@ flags.DEFINE_integer('parallel_ps', 2, 'number of human tracker process to run')
 flags.DEFINE_boolean('online', False, 'run online image extraction using rtsp')
 flags.DEFINE_boolean('reid', True, 'set to True to run with REID, set to False if new labelled data are needed to be recorded')
 
-def db_process():
-    pass
-    #db = ImageDB()
-    # db.insert_data
+def db_process(*args):
+    while True:
+        db_list = [] 
+        # args[0] is the length of camera list
+        # args[1] is the shared queue recording the database paths 
+        while(len(db_list) < args[0]):
+            print("db_path: ", args[1].get())
+            db_list.append(args[1].get())
+            #time.sleep(1)
+        # finish gathering the db_paths, run merge.
+        now = dt.datetime.now()
+        db_name = now.strftime("Reid_%Y%m%d.db")
+        db_filepath = os.path.join(FLAGS.merge_db_path, db_name)
+        reid_db = ImageDB(db_name=db_filepath)
+        reid_db.delete_dbfile()
+        reid_db.create_table()
+        reid_db.merge_data(db_list)
+
 
 class MultiPs():
     def __init__(self):
         self.job = []
         self.thread = []
+        self.cam = []
 
         # shared resource
         self.db_queue = mp.Queue()
@@ -58,7 +75,10 @@ class MultiPs():
         logger.setLevel(logging.DEBUG)
 
     def new_job(self, name, target, *args):
-        j = mp.Process(name=name, target=target, args=args)
+        print("args: ", args)
+        q_args = (*args, self.db_queue)
+        print("q_args: ", q_args)
+        j = mp.Process(name=name, target=target, args=q_args)
         j.daemon = True
         self.job.append(j)
 
@@ -73,16 +93,15 @@ class MultiPs():
             j.join()
 
         # save db if the process is interrupted halfway.
-        now = dt.datetime.now()
-        db_name = now.strftime("Reid_Interrupted_%Y%m%d.db")
-        db_filepath = os.path.join("../reid/database", db_name).replace("\\","/")
-        shutil.copy2(FLAGS.reid_db_path, db_filepath)
-        print("Reid interrupted database file is saved at: ", db_filepath)
+        for i in range(FLAGS.parallel_ps):
+            if self.cam:
+                self.db_queue.put(FLAGS.cam_db_path + "/Cam_" + str(self.cam[i]) + ".db")
 
         sys.exit(0)
 
 def cam_stream(mps):
     mps.job.clear()
+    mps.new_job('database_ps', db_process)
     mps.new_job('camera_ch' + FLAGS.video, camera_capture, int(FLAGS.video))
     for j in mps.job:
         j.start()
@@ -92,6 +111,7 @@ def cam_stream(mps):
 
 def sequential_run(batch, db_path, mps):
     mps.job.clear()
+    mps.new_job('database_ps', db_process)
     print("batch:", batch)
     for ch in batch:
         mps.new_job('camera_ch' + ch, camera_capture, int(ch), db_path)
@@ -102,6 +122,8 @@ def sequential_run(batch, db_path, mps):
 
 def online_run(rtsp, cam, db_path, mps):
     mps.job.clear()
+    mps.new_job('database_ps', db_process, FLAGS.parallel_ps)
+    mps.cam = cam
     for i in range(FLAGS.parallel_ps):
         # cam[i]:int , rtsp[i]:str
         mps.new_job('camera_ch' + str(cam[i]), camera_capture, cam[i], rtsp[i], db_path)
@@ -186,7 +208,6 @@ def main(_argv):
                 sequential_run(batch, db_path, mps)
         else:
             cam_stream(mps)
-    #mps.new_job('database_ps', db_process)
     # for j in mps.job:
     #    j.start()
     # for j in mps.job:
