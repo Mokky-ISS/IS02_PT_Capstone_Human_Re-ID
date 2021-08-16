@@ -40,22 +40,52 @@ flags.DEFINE_boolean('online', False, 'run online image extraction using rtsp')
 flags.DEFINE_boolean('reid', True, 'set to True to run with REID, set to False if new labelled data are needed to be recorded')
 
 def db_process(*args):
-    while True:
+    def signal_handler(sig, frame):
+        name = mp.current_process().name
+        print(str(name) + ': You pressed Ctrl+C!')
+
         db_list = [] 
-        # args[0] is the length of camera list
-        # args[1] is the shared queue recording the database paths 
-        while(len(db_list) < args[0]):
-            print("db_path: ", args[1].get())
-            db_list.append(args[1].get())
-            #time.sleep(1)
+        # args[0] is the camera list
+        # args[1] is the length of camera list
+        # args[2] is the cam path
+        # args[3] is the db merge path
+        # args[4] is the shared queue recording the database paths 
+        
+        for i in range(args[1]):
+            if args[0]:
+                db_list.append(args[2] + "/Cam_" + str(args[0][i]) + ".db")
         # finish gathering the db_paths, run merge.
+        print('Saving merge database..')
         now = dt.datetime.now()
-        db_name = now.strftime("Reid_%Y%m%d.db")
-        db_filepath = os.path.join(FLAGS.merge_db_path, db_name)
+        db_name = now.strftime("Reid_Interrputed_%Y%m%d.db")
+        db_filepath = os.path.join(args[3], db_name)
         reid_db = ImageDB(db_name=db_filepath)
         reid_db.delete_dbfile()
         reid_db.create_table()
         reid_db.merge_data(db_list)
+
+        sys.exit(0)
+        
+    signal.signal(signal.SIGINT, signal_handler)
+
+    while True:
+        db_list = [] 
+        # args[0] is the length of camera list
+        # args[1] is the shared queue recording the database paths 
+        while len(db_list) < args[1]:
+            print("db_path_process: ", args[4].get())
+            db_list.append(args[4].get())
+            #time.sleep(1)
+        # finish gathering the db_paths, run merge.
+        print('Saving merge database..')
+        now = dt.datetime.now()
+        db_name = now.strftime("Reid_%Y%m%d.db")
+        db_filepath = os.path.join(args[3], db_name)
+        reid_db = ImageDB(db_name=db_filepath)
+        reid_db.delete_dbfile()
+        reid_db.create_table()
+        reid_db.merge_data(db_list)
+    
 
 
 class MultiPs():
@@ -89,19 +119,19 @@ class MultiPs():
 
     def signal_handler(self, sig, frame):
         print('Main Program: You pressed Ctrl+C!')
-        for j in self.job:
-            j.join()
-
         # save db if the process is interrupted halfway.
         for i in range(FLAGS.parallel_ps):
             if self.cam:
                 self.db_queue.put(FLAGS.cam_db_path + "/Cam_" + str(self.cam[i]) + ".db")
+        # wait for dataase merging
+        time.sleep(10)
+        for j in self.job:
+            j.join()
 
         sys.exit(0)
 
 def cam_stream(mps):
     mps.job.clear()
-    mps.new_job('database_ps', db_process)
     mps.new_job('camera_ch' + FLAGS.video, camera_capture, int(FLAGS.video))
     for j in mps.job:
         j.start()
@@ -109,9 +139,10 @@ def cam_stream(mps):
         j.join()
 
 
-def sequential_run(batch, db_path, mps):
+def sequential_run(batch, cam, db_path, mps):
     mps.job.clear()
-    mps.new_job('database_ps', db_process)
+    mps.new_job('database_ps', db_process, cam, FLAGS.parallel_ps, FLAGS.cam_db_path, FLAGS.merge_db_path)
+    mps.cam = cam
     print("batch:", batch)
     for ch in batch:
         mps.new_job('camera_ch' + ch, camera_capture, int(ch), db_path)
@@ -122,7 +153,7 @@ def sequential_run(batch, db_path, mps):
 
 def online_run(rtsp, cam, db_path, mps):
     mps.job.clear()
-    mps.new_job('database_ps', db_process, FLAGS.parallel_ps)
+    mps.new_job('database_ps', db_process, cam, FLAGS.parallel_ps, FLAGS.cam_db_path, FLAGS.merge_db_path)
     mps.cam = cam
     for i in range(FLAGS.parallel_ps):
         # cam[i]:int , rtsp[i]:str
@@ -203,9 +234,10 @@ def main(_argv):
             ps_list = create_ps_list(vfile)
 
             print("Start Multiprocessing..")
+            table = get_rtsp('data/rtsp/rtsp_cam.xlsx')
             # run new camera process
             for batch in ps_list:
-                sequential_run(batch, db_path, mps)
+                sequential_run(batch, table.to_dict('dict')['cam'], db_path, mps)
         else:
             cam_stream(mps)
     # for j in mps.job:

@@ -31,12 +31,12 @@ db_queue = None
 # child process from main.py
 def camera_capture(*args):
     # assign camera id into new camera process.
+    global db_queue
     # offline
     if len(args) == 3:
         flags.DEFINE_integer('cam_id', args[0], 'camera ID to run on different camera')
         flags.DEFINE_string('db_path', args[1], 'database save path.')
         print("db_path check: ", args[1])
-        global db_queue
         db_queue = args[2]
     # online
     else:
@@ -44,7 +44,6 @@ def camera_capture(*args):
         flags.DEFINE_string('rtsp', args[1], 'rtsp to run on different camera')
         flags.DEFINE_string('db_path', args[2], 'database save path.')
         print("db_path check: ", args[2])
-        global db_queue
         db_queue = args[3]
     try:
         app.run(run_human_tracker)
@@ -245,6 +244,7 @@ def run_human_tracker(_argv):
     if FLAGS.reid:
         cam_path = FLAGS.cam_db_path + "/Cam_" + str(FLAGS.cam_id) + ".db"
         reid_db = ImageDB(db_name=cam_path)
+        print("cam_path: ", cam_path)
         reid_db.delete_dbfile()
         reid_db.create_table() 
         reid = Reid(cam_path)
@@ -252,6 +252,7 @@ def run_human_tracker(_argv):
     def signal_handler(sig, frame):
         name = mp.current_process().name
         print(str(name) + ': You pressed Ctrl+C!')
+        # not required to send signal back to database_ps thread, use signal_handler in database_ps.
         vid.release()
         if FLAGS.output:
             out.release()

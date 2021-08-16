@@ -125,17 +125,23 @@ class ImageDB(object):
     @_con_sqlite  # only use this method in main database!
     def merge_data(self, db_lists):
         for db in db_lists:
-            db_cam = sqlite3.connect(db, detect_types=sqlite3.PARSE_DECLTYPES |
-                                        sqlite3.PARSE_COLNAMES)
+            print("merge_dbpath: ", db)
+            db_cam = sqlite3.connect(db)
             db_cursor = db_cam.cursor()
-            command = 'SELECT * FROM ' + self.table_name
+            m_col = "img_id, img, vector_tensor, cam_id, track_id"
+            command = 'SELECT ' + m_col + ' FROM ' + self.table_name
             db_cursor.execute(command)
             output = db_cursor.fetchall()   # Returns the results as a list.
             # Insert those contents into another table.
             for row in output:
-                self.cursor.execute('INSERT INTO ' + self.table_name + ' VALUES (?, ?, ?, ?, ?, ?)', row)
+                command = 'INSERT INTO ' + self.table_name + ' (' + m_col + ') VALUES (?, ?, ?, ?, ?)'
+                self.cursor.execute(command, row)
+
             # Cleanup
+            db_cam.commit()
             db_cursor.close()
+            db_cam.close()
+
 
     # SAMPLE METHOD JUST FOR REFERENCE, DONT RUN THIS METHOD!
     # @_con_sqlite
