@@ -19,6 +19,7 @@ flags.DEFINE_integer('size', 416, 'resize images to')
 flags.DEFINE_boolean('tiny', False, 'yolo or yolo-tiny')
 flags.DEFINE_string('model', 'yolov4', 'yolov3 or yolov4')
 flags.DEFINE_string('video', './data/video/', 'path to input video or set to 0 for webcam')
+flags.DEFINE_string('rtsp_path', 'data/rtsp/rtsp_cam.xlsx', 'default rtsp camera path')
 flags.DEFINE_string('cam_db_path', '../reid/database', 'default cam database path')
 flags.DEFINE_string('merge_db_path', "../reid/database/merge", 'default merged reid database path, where all of the samples from cam are saved into the db with timestamp')
 #flags.DEFINE_string('output', './outputs/', 'path to output video')
@@ -144,20 +145,22 @@ def sequential_run(batch, cam, db_path, mps):
     mps.new_job('database_ps', db_process, cam, FLAGS.parallel_ps, FLAGS.cam_db_path, FLAGS.merge_db_path)
     mps.cam = cam
     print("batch:", batch)
+    gpu_num = 0
     for ch in batch:
-        mps.new_job('camera_ch' + ch, camera_capture, int(ch), db_path)
+        mps.new_job('camera_ch' + ch, camera_capture, FLAGS.online, int(ch), gpu_num, db_path)
+        gpu_num = 1 - gpu_num
     for j in mps.job:
         j.start()
     for j in mps.job:
         j.join()
 
-def online_run(rtsp, cam, db_path, mps):
+def online_run(rtsp, cam, gpu, db_path, mps):
     mps.job.clear()
     mps.new_job('database_ps', db_process, cam, FLAGS.parallel_ps, FLAGS.cam_db_path, FLAGS.merge_db_path)
     mps.cam = cam
     for i in range(FLAGS.parallel_ps):
         # cam[i]:int , rtsp[i]:str
-        mps.new_job('camera_ch' + str(cam[i]), camera_capture, cam[i], rtsp[i], db_path)
+        mps.new_job('camera_ch' + str(cam[i]), camera_capture, FLAGS.online, cam[i], rtsp[i], gpu[i], db_path)
         print("New online process for cam " + str(cam[i]))
     for j in mps.job:
         j.start()
@@ -220,8 +223,8 @@ def main(_argv):
 
     # online mode
     if FLAGS.online:
-        table = get_rtsp('data/rtsp/rtsp_cam.xlsx')
-        online_run(table.to_dict('dict')['rtsp'], table.to_dict('dict')['cam'], db_path, mps)
+        table = get_rtsp(FLAGS.rtsp_path)
+        online_run(table.to_dict('dict')['rtsp'], table.to_dict('dict')['cam'], table.to_dict('dict')['gpu'], db_path, mps)
     # offline mode
     else:
         if not FLAGS.video.isdigit():      
@@ -234,7 +237,7 @@ def main(_argv):
             ps_list = create_ps_list(vfile)
 
             print("Start Multiprocessing..")
-            table = get_rtsp('data/rtsp/rtsp_cam.xlsx')
+            table = get_rtsp(FLAGS.rtsp_path)
             # run new camera process
             for batch in ps_list:
                 sequential_run(batch, table.to_dict('dict')['cam'], db_path, mps)

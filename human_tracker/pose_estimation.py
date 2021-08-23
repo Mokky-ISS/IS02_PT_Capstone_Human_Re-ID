@@ -56,7 +56,7 @@ def cal_angle(pt1, pt2, pt3):
     return np.degrees(angle)
 
 
-draw_skeleton = True
+draw_skeleton = False
 test_image_from_db = False
 img_count = 0
 

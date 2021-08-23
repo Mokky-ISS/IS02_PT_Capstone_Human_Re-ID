@@ -32,19 +32,23 @@ db_queue = None
 def camera_capture(*args):
     # assign camera id into new camera process.
     global db_queue
-    # offline
-    if len(args) == 3:
-        flags.DEFINE_integer('cam_id', args[0], 'camera ID to run on different camera')
-        flags.DEFINE_string('db_path', args[1], 'database save path.')
-        print("db_path check: ", args[1])
-        db_queue = args[2]
     # online
+    if args[0]:
+        print("Online mode")
+        flags.DEFINE_integer('cam_id', args[1], 'camera ID to run on different camera')
+        flags.DEFINE_string('rtsp', args[2], 'rtsp to run on different camera')
+        flags.DEFINE_integer('gpu', args[3], 'gpu to run on different camera')
+        flags.DEFINE_string('db_path', args[4], 'database save path.')
+        print("db_path check: ", args[4])
+        db_queue = args[5]
+    # offline
     else:
-        flags.DEFINE_integer('cam_id', args[0], 'camera ID to run on different camera')
-        flags.DEFINE_string('rtsp', args[1], 'rtsp to run on different camera')
-        flags.DEFINE_string('db_path', args[2], 'database save path.')
-        print("db_path check: ", args[2])
-        db_queue = args[3]
+        print("Offline mode")
+        flags.DEFINE_integer('cam_id', args[1], 'camera ID to run on different camera')
+        flags.DEFINE_integer('gpu', args[2], 'gpu to run on different camera')
+        flags.DEFINE_string('db_path', args[3], 'database save path.')
+        print("db_path check: ", args[3])
+        db_queue = args[4]
     try:
         app.run(run_human_tracker)
         # In the app.run() argument, include tuple arguments after the target function to fill in the _argv  
@@ -123,16 +127,23 @@ def run_human_tracker(_argv):
         try:
             #tf.config.experimental.set_visible_devices(gpus[0:1], 'GPU')
             # Currently, memory growth needs to be the same across GPUs
-            for gpu in gpus:
-                tf.config.experimental.set_visible_devices(gpu, 'GPU')
-                tf.config.experimental.set_memory_growth(gpu, True)
-                # tf.config.experimental.set_virtual_device_configuration(
-                #     gpu,
-                #     [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
-                logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-                print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-                print(gpus)
-                print(logical_gpus)
+            print("FlagGPU: ", FLAGS.gpu)
+            # online
+            if FLAGS.online:
+                tf.config.experimental.set_visible_devices(gpus[FLAGS.gpu], 'GPU')
+                tf.config.experimental.set_memory_growth(gpus[FLAGS.gpu], True)
+            # offline 
+            else:
+                # if only single gpu is running, use gpus[0]. If two gpu are running, use FLAGS.gpu 
+                tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
+                tf.config.experimental.set_memory_growth(gpus[0], True)
+            #tf.config.set_logical_device_configuration(
+            #    gpus[0],
+            #    [tf.config.LogicalDeviceConfiguration(memory_limit=1024)])
+            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+            print("[Cam "+str(FLAGS.cam_id)+"]:", len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+            print(gpus)
+            print(logical_gpus)
         except RuntimeError as e:
             # Memory growth must be set before GPUs have been initialized
             print(e)
