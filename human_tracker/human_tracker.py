@@ -122,32 +122,32 @@ def run_human_tracker(_argv):
     # print("physical device:", physical_devices)
     # if len(physical_devices) > 0:
     #     tf.config.experimental.set_memory_growth(physical_devices[0], True)
-    gpus = tf.config.list_physical_devices('GPU')
-    if gpus:
-        try:
-            #tf.config.experimental.set_visible_devices(gpus[0:1], 'GPU')
-            # Currently, memory growth needs to be the same across GPUs
-            print("FlagGPU: ", FLAGS.gpu)
-            # online
-            if FLAGS.online:
-                tf.config.experimental.set_visible_devices(gpus[FLAGS.gpu], 'GPU')
-                tf.config.experimental.set_memory_growth(gpus[FLAGS.gpu], True)
-            # offline 
-            else:
-                # if only single gpu is running, use gpus[0]. If two gpu are running, use FLAGS.gpu 
-                tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
-                tf.config.experimental.set_memory_growth(gpus[0], True)
-            #tf.config.set_logical_device_configuration(
-            #    gpus[0],
-            #    [tf.config.LogicalDeviceConfiguration(memory_limit=1024)])
-            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-            print("[Cam "+str(FLAGS.cam_id)+"]:", len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-            print(gpus)
-            print(logical_gpus)
-        except RuntimeError as e:
-            # Memory growth must be set before GPUs have been initialized
-            print(e)
-    #mirrored_strategy = tf.distribute.MirroredStrategy(devices=["/gpu:0"])
+    # gpus = tf.config.list_physical_devices('GPU')
+    # if gpus:
+    #     try:
+    #         #tf.config.experimental.set_visible_devices(gpus[0:1], 'GPU')
+    #         # Currently, memory growth needs to be the same across GPUs
+    #         print("FlagGPU: ", FLAGS.gpu)
+    #         # online
+    #         if FLAGS.online:
+    #             tf.config.experimental.set_visible_devices(gpus[FLAGS.gpu], 'GPU')
+    #             tf.config.experimental.set_memory_growth(gpus[FLAGS.gpu], True)
+    #         # offline 
+    #         else:
+    #             # if only single gpu is running, use gpus[0]. If two gpu are running, use FLAGS.gpu 
+    #             tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
+    #             tf.config.experimental.set_memory_growth(gpus[0], True)
+    #         #tf.config.set_logical_device_configuration(
+    #         #    gpus[0],
+    #         #    [tf.config.LogicalDeviceConfiguration(memory_limit=1024)])
+    #         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+    #         print("[Cam "+str(FLAGS.cam_id)+"]:", len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+    #         print(gpus)
+    #         print(logical_gpus)
+    #     except RuntimeError as e:
+    #         # Memory growth must be set before GPUs have been initialized
+    #         print(e)
+    # #mirrored_strategy = tf.distribute.MirroredStrategy(devices=["/gpu:0"])
 
     # Increase max_cosine_distance variable to reduce identity switching.
     # Increase the threshold will increase the tolerance to change the track id on a human.
@@ -181,9 +181,12 @@ def run_human_tracker(_argv):
     # initialize tracker
     tracker = Tracker(metric)
 
+    print("FlagGPU: ", FLAGS.gpu)
     # load configuration for object detector
     config = ConfigProto()
     #config.gpu_options.per_process_gpu_memory_fraction = 0.2
+    if FLAGS.online:
+        config.gpu_options.visible_device_list = str(FLAGS.gpu)    
     config.gpu_options.allow_growth = True
     session = InteractiveSession(config=config)
     devices = session.list_devices()
