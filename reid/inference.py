@@ -6,7 +6,7 @@ from PIL import Image
 import math
 import matplotlib.pyplot as plt
 from config import Config
-from utils.to_sqlite import insert_vector_db, insert_human_db, insert_infer_db, load_gallery_from_db, convertToBinaryData, load_human_db, convertImgtoBlob, convertBlobtoIMG
+from utils.to_sqlite import insert_vector_db, load_gallery_from_db, convertToBinaryData, convertImgtoBlob, convertBlobtoIMG
 from utils.reranking import re_ranking
 
 from model import make_model
@@ -36,7 +36,6 @@ class reid_inference:
         print('Ready to Eval')
         print('Loading from DB...')
         self.all_img_id, self.all_patch_img, self.all_gal_feat, self.all_cam_id = load_gallery_from_db() #load from vectorkb_table
-        self.human_dict = load_human_db()
         self._tmp_img = ""
         self._tmp_galfeat = ""
         print('Data loaded. You can start infer an image using to_gallery_feat --> query_feat --> infer')
@@ -137,3 +136,19 @@ class reid_inference:
 
             all_result.append(tmp)
         return all_result
+
+
+
+
+
+
+if __name__ == "__main__":
+    reid = reid_inference()
+    print(len(reid.all_img_id), len(reid.all_patch_img), len(reid.all_gal_feat), len(reid.all_cam_id))
+    print("Image in 10th row is", reid.all_img_id[10], "with cam ID =", reid.all_cam_id[10])
+
+    img = './reid/example/0002_c3s1_UO5K20210612T1522373990_00.jpg'
+    query_feat = reid.to_query_feat(img)
+    result = reid.infer(query_feat, rerank_range = 50)
+
+    print(result)
