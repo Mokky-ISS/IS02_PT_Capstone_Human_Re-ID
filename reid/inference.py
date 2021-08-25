@@ -110,7 +110,11 @@ class reid_inference:
     def infer(self, query_feat, thres= 0.6, reranking = True, rerank_range = 50):
 
         #cosine
-        dist_mat = torch.nn.functional.cosine_similarity(query_feat, self.all_gal_feat).cpu().numpy()
+        try:
+            dist_mat = torch.nn.functional.cosine_similarity(query_feat, self.all_gal_feat).cpu().numpy()
+        except RuntimeError:
+            print('Table is empty.')
+            return []
         indices = np.argsort(dist_mat)[::-1][:rerank_range] #to test if use 50 or use all better
         
         if reranking:
@@ -145,7 +149,7 @@ class reid_inference:
 if __name__ == "__main__":
     reid = reid_inference()
     print(len(reid.all_img_id), len(reid.all_patch_img), len(reid.all_gal_feat), len(reid.all_cam_id))
-    print("Image in 10th row is", reid.all_img_id[10], "with cam ID =", reid.all_cam_id[10])
+    #print("Image in 10th row is", reid.all_img_id[10], "with cam ID =", reid.all_cam_id[10])
 
     img = './reid/example/0002_c3s1_UO5K20210612T1522373990_00.jpg'
     query_feat = reid.to_query_feat(img)
