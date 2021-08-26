@@ -21,8 +21,8 @@ class reid_inference:
     """Reid Inference class.
     """
 
-    def __init__(self, cam_path):
-        sql.db_path = cam_path
+    def __init__(self, db_path):
+        sql.db_path = db_path
         cudnn.benchmark = True
         self.Cfg = Config()
         self.model = make_model(self.Cfg, 255)

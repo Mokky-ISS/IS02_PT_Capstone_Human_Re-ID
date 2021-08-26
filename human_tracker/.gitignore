@@ -8,3 +8,4 @@
 !**/helpers/*.jpg
 checkpoints/
 *.pth
+*.rej
