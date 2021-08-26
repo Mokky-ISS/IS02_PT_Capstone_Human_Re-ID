@@ -7,6 +7,7 @@ import math
 import matplotlib.pyplot as plt
 from config import Config
 from utils.to_sqlite import insert_vector_db, load_gallery_from_db, convertToBinaryData, convertImgtoBlob, convertBlobtoIMG
+import utils.to_sqlite as sql
 from utils.reranking import re_ranking
 
 from model import make_model

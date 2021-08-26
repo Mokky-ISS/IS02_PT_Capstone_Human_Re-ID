@@ -31,7 +31,7 @@ flags.DEFINE_float('score', 0.50, 'score threshold')
 flags.DEFINE_boolean('dont_show', False, 'dont show video output')
 flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
 flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
-flags.DEFINE_boolean('db', False, 'save information in database')
+flags.DEFINE_boolean('db', True, 'save information in database')
 flags.DEFINE_boolean('trajectory', False, 'draw historical trajectories on every tracked human')
 flags.DEFINE_integer('input_skip_frame', 8, 'number of frame to be skipped')
 flags.DEFINE_integer('db_skip_frame', 8, 'number of frame to be skipped')
@@ -219,8 +219,8 @@ def main(_argv):
         db_path = "./database/Image_" + str(dt.datetime.now().strftime("%Y%m%dT%H%M%S")) + ".db"
         print("db_path main: ", db_path)
         img_db = ImageDB(db_path)
-        img_db.delete_dbfile()
-        img_db.create_table()
+        #img_db.delete_dbfile()
+        #img_db.create_table()
 
     # online mode
     if FLAGS.online:
