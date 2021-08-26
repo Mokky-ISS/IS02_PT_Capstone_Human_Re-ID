@@ -158,12 +158,12 @@ def load_human_db():
 
 
 
-def load_images_from_db(db=db_path, table = 'vectorkb_table'):
+def load_images_from_db(table = 'vectorkb_table'):
     try:
-        sqliteConnection = sqlite3.connect(db)
+        sqliteConnection = sqlite3.connect(db_path)
         cursor = sqliteConnection.cursor()
 
-        cursor.execute(f"select img_id, cam_id, patch_img from {table}")
+        cursor.execute(f"select img_id, cam_id, img from {table}")
         result = cursor.fetchall()
         img_id  = list(list(zip(*result))[0])
         cam_id  = list(list(zip(*result))[1])
@@ -175,4 +175,4 @@ def load_images_from_db(db=db_path, table = 'vectorkb_table'):
         return img_id, cam_id, img_list
 
     except Error as err:
-        print("Connection error to Sql", db, err)
+        print("Connection error to Sql", db_path, err)

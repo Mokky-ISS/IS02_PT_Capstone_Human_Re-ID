@@ -8,6 +8,7 @@ if p not in sys.path:
 from inference import reid_inference
 from utils.metrics import cosine_similarity, euclidean_distance
 from utils.to_sqlite import insert_vector_db, insert_human_db, insert_infer_db, load_gallery_from_db, convertToBinaryData, load_human_db, load_images_from_db, convertBlobtoIMG
+import utils.to_sqlite as sql
 import numpy as np
 import time
 
@@ -21,7 +22,10 @@ import time
 
 class Reid():
     def __init__(self, db_path):
-        self.reid = reid_inference(db_path)     
+        # if you want to use general functions in reid_inference.py, insert the db_path into the parameter for class constructor. Call the function after the object is created(e.g. reid.to_gallery_feat(imgid, pil_img))
+        self.reid = reid_inference(db_path)
+        # self.db_path for member class.
+        self.db_path = db_path
 
     def run(self, imgid, img):
         start_time = time.time()
@@ -30,3 +34,15 @@ class Reid():
         #query_feat = self.reid.to_query_feat(img)
         #self.reid.infer(query_feat, imgid, reranking=True) #always RERANKING = TRUE
         print("[Reid.to_gallery_feat]: --- %s seconds ---" % (time.time() - start_time))
+
+    def run_reid(self):
+        print("run_reid db_path: ", self.db_path)
+        # if you want to use inner function inside to_sqlite.py (e.g. load_images_from_db()), insert the db_path in the sql.db_path. Remember to import utils.to_sqlite on top.
+        sql.db_path = self.db_path 
+        _, _, img_list_all = load_images_from_db()
+        for img in img_list_all:
+            start_time = time.time()
+            #pil_img = convertBlobtoIMG(img)
+            query_feat = self.reid.to_query_feat(img)
+            result = self.reid.infer(query_feat, rerank_range = 50)
+            print("--- %s seconds ---" % (time.time() - start_time))
