@@ -5,7 +5,8 @@ import torch
 from PIL import Image
 import io
 
-db_path = './reid/reid_db.db'
+# default path, will be changed by other script.
+db_path = '../reid/database/reid_db.db'
 
 def insert_vector_db(img_id, img, feat_vec, cam_id, track_id):
     try:

@@ -20,7 +20,8 @@ class reid_inference:
     """Reid Inference class.
     """
 
-    def __init__(self):
+    def __init__(self, db_path):
+        sql.db_path = db_path
         cudnn.benchmark = True
         self.Cfg = Config()
         self.model = make_model(self.Cfg, 255)
@@ -39,7 +40,6 @@ class reid_inference:
         self._tmp_img = ""
         self._tmp_galfeat = ""
         print('Data loaded. You can start infer an image using to_gallery_feat --> query_feat --> infer')
-    
 
 
     def to_gallery_feat(self, img_id, image_patch_or_path, flip=True, norm=True):

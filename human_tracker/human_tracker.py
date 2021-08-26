@@ -27,23 +27,29 @@ from absl.flags import FLAGS
 from absl import app, flags, logging
 
 # child process from main.py
-
-
 def camera_capture(*args):
     # assign camera id into new camera process.
-    # offline
-    if len(args) == 2:
-        flags.DEFINE_integer('cam_id', args[0], 'camera ID to run on different camera')
-        flags.DEFINE_string('db_path', args[1], 'database save path.')
-        print("db_path check: ", args[1])
     # online
+    if args[0]:
+        print("Online mode")
+        flags.DEFINE_integer('cam_id', args[1], 'camera ID to run on different camera')
+        flags.DEFINE_string('rtsp', args[2], 'rtsp to run on different camera')
+        flags.DEFINE_integer('gpu', args[3], 'gpu to run on different camera')
+        flags.DEFINE_string('db_path', args[4], 'database save path.')
+        print("db_path check: ", args[4])
+
+    # offline
     else:
-        flags.DEFINE_integer('cam_id', args[0], 'camera ID to run on different camera')
-        flags.DEFINE_string('rtsp', args[1], 'rtsp to run on different camera')
-        flags.DEFINE_string('db_path', args[2], 'database save path.')
-        print("db_path check: ", args[2])
+        print("Offline mode")
+        flags.DEFINE_integer('cam_id', args[1], 'camera ID to run on different camera')
+        flags.DEFINE_integer('gpu', args[2], 'gpu to run on different camera')
+        flags.DEFINE_string('db_path', args[3], 'database save path.')
+        print("db_path check: ", args[3])
+
     try:
         app.run(run_human_tracker)
+        # In the app.run() argument, include tuple arguments after the target function to fill in the _argv  
+        # e.g. app.run(run_human_tracker, ("test",))
     except SystemExit:
         pass
 
@@ -73,7 +79,7 @@ def run_human_tracker_1(_argv):
 def run_human_tracker(_argv):
     # Every neccessary packages must be imported within the child process instead of parent process,
     # to avoid error of "could not retrieve CUDA device count: CUDA_ERROR_NOT_INITIALIZED: initialization error"
-
+    
     # export to database
     from database import ImageDB
     # check human pose
@@ -118,14 +124,15 @@ def run_human_tracker(_argv):
         try:
             #tf.config.experimental.set_visible_devices(gpus[0:1], 'GPU')
             # Currently, memory growth needs to be the same across GPUs
+
             for gpu in gpus:
                 tf.config.experimental.set_visible_devices(gpu, 'GPU')
                 tf.config.experimental.set_memory_growth(gpu, True)
-                # tf.config.experimental.set_virtual_device_configuration(
-                #     gpu,
-                #     [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
+                #tf.config.set_logical_device_configuration(
+                #    gpus[0],
+                #    [tf.config.LogicalDeviceConfiguration(memory_limit=1024)])
                 logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-                print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+                print("[Cam "+str(FLAGS.cam_id)+"]:", len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
                 print(gpus)
                 print(logical_gpus)
         except RuntimeError as e:
@@ -165,9 +172,12 @@ def run_human_tracker(_argv):
     # initialize tracker
     tracker = Tracker(metric)
 
+    print("FlagGPU: ", FLAGS.gpu)
     # load configuration for object detector
     config = ConfigProto()
     #config.gpu_options.per_process_gpu_memory_fraction = 0.2
+    if FLAGS.online:
+        config.gpu_options.visible_device_list = str(FLAGS.gpu)    
     config.gpu_options.allow_growth = True
     session = InteractiveSession(config=config)
     devices = session.list_devices()
@@ -235,16 +245,37 @@ def run_human_tracker(_argv):
         # 1x1 grid, first subplot
         ax = fig.add_subplot(1, 1, 1)
 
-    # initialize reid
-    if FLAGS.reid:
-        reid_db = ImageDB(db_name=FLAGS.reid_db_path)
+    global db_path
+    global reid
+    db_path = None
+    reid = None
+    def create_new_db():
+        global db_path
+        global reid
+        now = dt.datetime.now()
+        db_name = now.strftime("Reid_%Y%m%d.db")
+        db_path = os.path.join(FLAGS.reid_db_path, db_name).replace("\\","/")
+        reid_db = ImageDB(db_name=db_path)
+        print("reid db_path: ", db_path)
         reid_db.delete_dbfile()
-        reid_db.create_table() 
-        reid = Reid()
+        reid_db.create_table()
+        reid = Reid(db_path)
+
+    # initialize reid 
+    if FLAGS.reid:
+        create_new_db()
 
     def signal_handler(sig, frame):
+        global db_path
         name = mp.current_process().name
         print(str(name) + ': You pressed Ctrl+C!')
+        # rename the database as interrupted 
+        if os.path.isfile(db_path):
+            now = dt.datetime.now()
+            db_name = now.strftime("Reid_Interrupted_%Y%m%dT%H%M%S.db")
+            interrupt_path = os.path.join(FLAGS.reid_db_path, "Interrupt", db_name).replace("\\","/")
+            #os.rename(db_path, interrupt_path)
+            shutil.move(db_path, interrupt_path)
         vid.release()
         if FLAGS.output:
             out.release()
@@ -254,35 +285,30 @@ def run_human_tracker(_argv):
         
     signal.signal(signal.SIGINT, signal_handler)
 
-    save = True 
-    reset = False
+    renew_db = True
     frame_num = 0
     # while video is running
     while True:
         now = dt.datetime.now()
         t = now.timetuple()
         # t[6] consists of day name information. 0 = Monday. 4 = Friday.
-        if t[6] > 4:
-            if save:
-                # copy the database with timestamp, and copy the db once only.
-                db_name = now.strftime("Reid_%Y%m%d.db")
-                db_filepath = os.path.join("../reid/database", db_name)
-                shutil.copy2(FLAGS.reid_db_path, db_filepath)
-                print("Reid database file is saved at: ", db_filepath)
-                save = False
-                reset = True
-
-            # during weekend, this tracker will sleep, and check for time every hour.
-            print("Standby during weekend [", now.strftime("%A, %d. %B %Y %I:%M%p"), ']')   
-            time.sleep(1*60*60)
-            continue 
+        if t[6] == 2 or t[6] == 5: 
+            if renew_db:
+                # create new database on Wednesday and Saturday, and only renew one time on each day.
+                create_new_db()
+                renew_db = False
+                print("New Database with timestamp [", now.strftime("%A, %d. %B %Y %I:%M%p"), ']')   
         else:
-            if reset:
-                # reset database record and reset it once
-                reid_db.delete_dbfile()
-                reid_db.create_table() 
-                reset = False
-                save = True       
+            renew_db = True
+            # copy the database with timestamp, and copy the db once only.
+            #db_name = now.strftime("Reid_%Y%m%d.db")
+            #db_filepath = os.path.join("../reid/database", db_name)
+            #shutil.copy2(FLAGS.reid_db_path, db_filepath)
+            #print("Reid database file is saved at: ", db_filepath)
+        
+            # during weekend, this tracker will sleep, and check for time every hour.
+            #time.sleep(1*60*60)
+            #continue     
 
         start_time = time.time()
         return_value, frame = vid.read()
@@ -413,7 +439,7 @@ def run_human_tracker(_argv):
 
             # update database
             # skip frame is done here to extract less data for database, if overall FPS for videocapture is reduced to one, tracker wont work.
-            if FLAGS.db and frame_num % FLAGS.db_skip_frame == 0:
+            if FLAGS.reid and frame_num % FLAGS.db_skip_frame == 0:
                 # Saliant sampling
                 print("=================================================")
                 print("Active targets: ", end=" ")
@@ -482,10 +508,12 @@ def run_human_tracker(_argv):
                             # run reid inference process
                             img_id = img_db.get_imgid(FLAGS.cam_id, track.track_id)
                             reid.run(img_id, patch_img)
-                            #img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np)
+                            if FLAGS.db:
+                                img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np)
                         else:
                             # export data to database
-                            img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np)
+                            if FLAGS.db:
+                                img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np)
                             #img_db.insert_data_old(FLAGS.cam_id, track.track_id, patch_img, patch_np, patch_bbox, frame_num, original_w, original_h)
                             #print("Data Type:", type(frame_num),type(track.track_id),type(patch_img),type(patch_bbox))
 
