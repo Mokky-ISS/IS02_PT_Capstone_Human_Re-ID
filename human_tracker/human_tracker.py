@@ -130,7 +130,7 @@ def run_human_tracker(_argv):
             #tf.config.experimental.set_memory_growth(gpu, True)
             tf.config.set_logical_device_configuration(
                 gpus[0],
-                [tf.config.LogicalDeviceConfiguration(memory_limit=1024)])
+                [tf.config.LogicalDeviceConfiguration(memory_limit=512)])
             logical_gpus = tf.config.experimental.list_logical_devices('GPU')
             print("[Cam "+str(FLAGS.cam_id)+"]:", len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
             print(gpus)
