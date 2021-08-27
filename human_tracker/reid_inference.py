@@ -44,5 +44,6 @@ class Reid():
             start_time = time.time()
             #pil_img = convertBlobtoIMG(img)
             query_feat = self.reid.to_query_feat(img)
+            print("query_feat: ", query_feat)
             result = self.reid.infer(query_feat, rerank_range = 50)
             print("--- %s seconds ---" % (time.time() - start_time))

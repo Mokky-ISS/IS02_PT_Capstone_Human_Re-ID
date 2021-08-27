@@ -119,6 +119,10 @@ def run_human_tracker(_argv):
     # print("physical device:", physical_devices)
     # if len(physical_devices) > 0:
     #     tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
+    # Important Note: to set gpu in TF, refer to this link https://stackoverflow.com/questions/40069883/how-to-set-specific-gpu-in-tensorflow
+    # Only change the gpu number here, dont change the gpus[0] in other lines.
+    os.environ["CUDA_VISIBLE_DEVICES"]=str(FLAGS.gpu)
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
         try:
@@ -126,14 +130,14 @@ def run_human_tracker(_argv):
             # Currently, memory growth needs to be the same across GPUs
 
             #for gpu in gpus:
-            tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
+            tf.config.experimental.set_visible_devices(gpus[FLAGS.gpu], 'GPU')
             #tf.config.experimental.set_memory_growth(gpu, True)
             tf.config.set_logical_device_configuration(
-                gpus[0],
+                gpus[FLAGS.gpu],
                 [tf.config.LogicalDeviceConfiguration(memory_limit=512)])
             logical_gpus = tf.config.experimental.list_logical_devices('GPU')
             print("[Cam "+str(FLAGS.cam_id)+"]:", len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-            print(gpus)
+            print("Check gpus:",gpus)
             print(logical_gpus)
         except RuntimeError as e:
             # Memory growth must be set before GPUs have been initialized
@@ -177,8 +181,8 @@ def run_human_tracker(_argv):
     config = ConfigProto()
     #config.gpu_options.per_process_gpu_memory_fraction = 0.2
     #if FLAGS.online:
-    #    config.gpu_options.visible_device_list = str(FLAGS.gpu)    
-    config.gpu_options.allow_growth = True
+    config.gpu_options.visible_device_list = str(FLAGS.gpu)   
+    config.gpu_options.allow_growth = False
     session = InteractiveSession(config=config)
     devices = session.list_devices()
     print("Session devices: ")
