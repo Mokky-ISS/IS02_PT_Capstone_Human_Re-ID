@@ -1,5 +1,5 @@
 import torch
-torch.cuda.set_device(0)
+torch.cuda.set_device(1)
 import os
 import numpy as np
 import cv2
