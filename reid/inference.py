@@ -1,5 +1,5 @@
 import torch
-torch.cuda.set_device(1)
+torch.cuda.set_device(0)
 import os
 import numpy as np
 import cv2
@@ -149,11 +149,11 @@ class reid_inference:
 
 
 if __name__ == "__main__":
-    reid = reid_inference()
+    reid = reid_inference('Reid_test.db')
     print(len(reid.all_img_id), len(reid.all_patch_img), len(reid.all_gal_feat), len(reid.all_cam_id))
     #print("Image in 10th row is", reid.all_img_id[10], "with cam ID =", reid.all_cam_id[10])
 
-    img = './reid/example/0002_c3s1_UO5K20210612T1522373990_00.jpg'
+    img = '../reid/example/0002_c3s1_UO5K20210612T1522373990_00.jpg'
     query_feat = reid.to_query_feat(img)
     result = reid.infer(query_feat, rerank_range = 50)
 
