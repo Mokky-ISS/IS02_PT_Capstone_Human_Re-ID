@@ -1,8 +1,8 @@
 import sqlite3
 from sqlite3 import Error
 import pickle
-torch.cuda.set_device(1)
 import torch
+torch.cuda.set_device(1)
 from PIL import Image
 import io
 
