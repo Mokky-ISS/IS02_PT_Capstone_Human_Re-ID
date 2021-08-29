@@ -10,6 +10,7 @@ from utils.metrics import cosine_similarity, euclidean_distance
 from utils.to_sqlite import insert_vector_db, insert_human_db, insert_infer_db, load_gallery_from_db, convertToBinaryData, load_human_db, load_images_from_db, convertBlobtoIMG
 import utils.to_sqlite as sql
 import numpy as np
+import datetime as dt
 import time
 
 #init class
@@ -26,6 +27,16 @@ class Reid():
         self.reid = reid_inference(db_path)
         # self.db_path for member class.
         self.db_path = db_path
+
+    def get_timestamp(self):
+        timestamp = dt.datetime.now()
+        time_filename = timestamp.strftime("%Y%m%dT%H%M%S")
+        return timestamp, time_filename
+
+    def get_imgid(self, cam_id, track_id):
+        timestamp, time_filename = self.get_timestamp()
+        img_id = str(cam_id) + '_' + str(track_id) + '_' + str(time_filename) 
+        return img_id
 
     def run(self, imgid, img):
         start_time = time.time()

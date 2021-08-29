@@ -31,7 +31,7 @@ flags.DEFINE_float('score', 0.50, 'score threshold')
 flags.DEFINE_boolean('dont_show', False, 'dont show video output')
 flags.DEFINE_boolean('info', False, 'show detailed info of tracked objects')
 flags.DEFINE_boolean('count', False, 'count objects being tracked on screen')
-flags.DEFINE_boolean('db', True, 'save information in database')
+#flags.DEFINE_boolean('db', True, 'save information in database')
 flags.DEFINE_boolean('trajectory', False, 'draw historical trajectories on every tracked human')
 flags.DEFINE_integer('input_skip_frame', 8, 'number of frame to be skipped')
 flags.DEFINE_integer('db_skip_frame', 8, 'number of frame to be skipped')
@@ -99,6 +99,9 @@ class MultiPs():
         # shared resource
         #self.db_queue = mp.Queue()
         self.manager = mp.Manager()
+        self.stop_tracker = self.manager.Value('i',0)
+        self.stop_main_ps = self.manager.Value('i',1)
+        self.db_path = None
         self.unique_id = self.manager.list()
 
     def log_msg(self):
@@ -107,9 +110,9 @@ class MultiPs():
         logger.setLevel(logging.DEBUG)
 
     def new_job(self, name, target, *args):
-        #print("args: ", args)
-        #q_args = (*args, self.db_queue)
-        #print("q_args: ", q_args)
+        print("args: ", args)
+        args = (*args, self.stop_main_ps, self.stop_tracker)
+        print("new args: ", args)
         j = mp.Process(name=name, target=target, args=args)
         j.daemon = True
         self.job.append(j)
@@ -119,12 +122,57 @@ class MultiPs():
         t.daemon = True
         self.thread.append(t)
 
+    def create_new_db(self):
+        #global db_path
+        #global reid
+        now = dt.datetime.now()
+        db_name = now.strftime("Reid_%Y%m%d.db")
+        db_path = os.path.join(FLAGS.reid_db_path, db_name).replace("\\","/")
+        reid_db = ImageDB(db_name=db_path)
+        print("reid db_path: ", db_path)
+        reid_db.delete_dbfile()
+        reid_db.create_table()
+        self.db_path = db_path
+        #reid = Reid(db_path)
+
+    # main process will run this database
+    def save_db(self):
+        renew_db = True
+        while self.stop_main_ps.value:
+            now = dt.datetime.now()
+            t = now.timetuple()
+            # t[6] consists of day name information. 0 = Monday. 4 = Friday.
+            #print("t[6]: ", t[6])
+            if t[6] == 2 or t[6] == 5: 
+                if renew_db:
+                    # stop human tracker processes
+                    self.stop_tracker.value = 1
+                    # create new database on Wednesday and Saturday, and only renew one time on each day.
+                    self.create_new_db()
+                    renew_db = False
+                    print("New Database with timestamp [", now.strftime("%A, %d. %B %Y %I:%M%p"), ']')  
+                    # reset human tracker processes
+                    self.stop_tracker.value = 0 
+                else:
+                    time.sleep(1)
+            else:
+                renew_db = True
+                #print("self.stop_tracker: ", self.stop_tracker.value)
+                #print("main process ticks..")
+                time.sleep(1)
+        print("save_db loop is ended..")
+
     def signal_handler(self, sig, frame):
         print('Main Program: You pressed Ctrl+C!')
-        # save db if the process is interrupted halfway.
-        # for i in range(FLAGS.parallel_ps):
-        #     if self.cam:
-        #         self.db_queue.put(FLAGS.reid_db_path + "/Cam_" + str(self.cam[i]) + ".db")
+
+        # when ctrl + c, rename the database as interrupted 
+        if os.path.isfile(self.db_path):
+            now = dt.datetime.now()
+            db_name = now.strftime("Reid_Interrupted_%Y%m%dT%H%M%S.db")
+            interrupt_path = os.path.join(FLAGS.reid_db_path, "Interrupt", db_name).replace("\\","/")
+            #os.rename(self.db_path, interrupt_path)
+            shutil.move(self.db_path, interrupt_path)
+
         for j in self.job:
             j.join()
 
@@ -147,9 +195,11 @@ def sequential_run(batch, cam, db_path, mps):
     gpu_num = 0
     for ch in batch:
         mps.new_job('camera_ch' + ch, camera_capture, FLAGS.online, int(ch), gpu_num, db_path)
-        gpu_num = 1 - gpu_num
+        #gpu_num = 1 - gpu_num
     for j in mps.job:
         j.start()
+    # main process in while loop, save database when cutoff date is reached
+    mps.save_db()
     for j in mps.job:
         j.join()
 
@@ -163,6 +213,8 @@ def online_run(rtsp, cam, gpu, db_path, mps):
         print("New online process for cam " + str(cam[i]))
     for j in mps.job:
         j.start()
+    # main process in while loop, save database when cutoff date is reached
+    mps.save_db()
     for j in mps.job:
         j.join()  
 
@@ -212,20 +264,23 @@ def main(_argv):
     # mps.log_msg()
     print("Parent Process PID: " + str(os.getpid()))
     print("Initialize database..")
-    
+
+    # create new database with timestamp
+    mps.create_new_db()
+
     # initialize backup database
-    db_path = None
-    if FLAGS.db:
-        db_path = "./database/Image_" + str(dt.datetime.now().strftime("%Y%m%dT%H%M%S")) + ".db"
-        print("db_path main: ", db_path)
-        img_db = ImageDB(db_path)
+    #db_path = None
+    # if FLAGS.db:
+    #     db_path = "./database/Image_" + str(dt.datetime.now().strftime("%Y%m%dT%H%M%S")) + ".db"
+    #     print("db_path main: ", db_path)
+    #     img_db = ImageDB(db_path)
         #img_db.delete_dbfile()
         #img_db.create_table()
 
     # online mode
     if FLAGS.online:
         table = get_rtsp(FLAGS.rtsp_path)
-        online_run(table.to_dict('dict')['rtsp'], table.to_dict('dict')['cam'], table.to_dict('dict')['gpu'], db_path, mps)
+        online_run(table.to_dict('dict')['rtsp'], table.to_dict('dict')['cam'], table.to_dict('dict')['gpu'], mps.db_path, mps)
     # offline mode
     else:
         if not FLAGS.video.isdigit():      
@@ -241,7 +296,7 @@ def main(_argv):
             table = get_rtsp(FLAGS.rtsp_path)
             # run new camera process
             for batch in ps_list:
-                sequential_run(batch, table.to_dict('dict')['cam'], db_path, mps)
+                sequential_run(batch, table.to_dict('dict')['cam'], mps.db_path, mps)
         else:
             cam_stream(mps)
     # for j in mps.job:
