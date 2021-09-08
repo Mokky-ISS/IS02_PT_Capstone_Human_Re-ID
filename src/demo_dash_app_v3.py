@@ -1,6 +1,6 @@
 import os
 import logging
-from demo_dash import dash_app_v2 as dash_app
+from demo_dash import dash_app_v3 as dash_app
 
 
 if __name__ == '__main__':
