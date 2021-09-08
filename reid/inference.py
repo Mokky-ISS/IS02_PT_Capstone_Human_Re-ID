@@ -1,5 +1,5 @@
 import torch
-torch.cuda.set_device(1)
+# torch.cuda.set_device(1)
 import os
 import numpy as np
 import cv2
@@ -28,7 +28,7 @@ class reid_inference:
         self.Cfg = Config()
         self.model = make_model(self.Cfg, 255)
         self.model.load_param(self.Cfg.TEST_WEIGHT)
-        self.model = self.model.to('cuda')
+        self.model = self.model.to('cuda:0')
         self.transform = T.Compose([
                 T.Resize(self.Cfg.INPUT_SIZE),
                 T.ToTensor(),
@@ -58,7 +58,7 @@ class reid_inference:
             query_img = image_patch_or_path
         
         input = torch.unsqueeze(self.transform(query_img), 0)
-        input = input.to('cuda')
+        input = input.to('cuda:0')
         with torch.no_grad():
             if flip:
                 gal_feat = torch.FloatTensor(input.size(0), 2048).zero_().cuda()
@@ -101,7 +101,7 @@ class reid_inference:
             query_img = image_patch_or_path
 
         input = torch.unsqueeze(self.transform(query_img), 0)
-        input = input.to('cuda')
+        input = input.to('cuda:0')
         with torch.no_grad():
             query_feat = self.model(input)
         return query_feat

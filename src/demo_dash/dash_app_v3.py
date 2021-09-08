@@ -12,7 +12,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
-from dash_html_components.H5 import H5
+#from dash_html_components.H5 import H5
 from demo_dash import header_v3 as header
 from database import query_database, query_reid
 from urllib.parse import parse_qs, urlencode

@@ -140,7 +140,7 @@ def run_human_tracker(_argv):
             #tf.config.experimental.set_memory_growth(gpu, True)
             tf.config.set_logical_device_configuration(
                 gpus[FLAGS.gpu],
-                [tf.config.LogicalDeviceConfiguration(memory_limit=512)])
+                [tf.config.LogicalDeviceConfiguration(memory_limit=1024)])
             logical_gpus = tf.config.experimental.list_logical_devices('GPU')
             print("[Cam "+str(FLAGS.cam_id)+"]:", len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
             print("Check gpus:",gpus)
@@ -160,7 +160,8 @@ def run_human_tracker(_argv):
     # Number of features to store in every tracked human.
     # Refer partial_fit function in nn_matching.py.
     #nn_budget = None
-    nn_budget = 1000
+    #nn_budget = 1000
+    nn_budget = 100
 
     # Reduce this variable to reduce identity switching.
     # This will only reduce overlap detections within one frame,
@@ -171,7 +172,8 @@ def run_human_tracker(_argv):
     # 0.75
 
     # Saliant sampling soft threshold
-    soft_thred = 0.08
+    #soft_thred = 0.08
+    soft_thred = 0.15
     #soft_thred = 0.01
 
     # initialize deep sort

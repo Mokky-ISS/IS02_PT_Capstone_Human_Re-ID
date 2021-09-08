@@ -2,7 +2,7 @@ import sqlite3
 from sqlite3 import Error
 import pickle
 import torch
-torch.cuda.set_device(1)
+# torch.cuda.set_device(1)
 from PIL import Image
 import io
 
