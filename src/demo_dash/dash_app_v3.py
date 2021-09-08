@@ -23,11 +23,11 @@ import dash_datetimepicker
 import sys
 import pandas as pd
 from datetime import datetime
-sys.path.append(os.getcwd())
-sys.path.append(f'{os.getcwd()}/reid')
-from reid import inference
-from reid.inference import reid_inference
-from reid.utils import to_sqlite
+sys.path.append('../')
+sys.path.append(f'../reid')
+#import inference
+from inference import reid_inference
+from utils import to_sqlite
 
 _reid_db_path = None
 _reid = None
@@ -480,6 +480,7 @@ def show_results_images(pathname, search, n_clicks, startDate, endDate, cam_id, 
     row_images = []
     if path_db is not None and (img_id is not None or img is not None) and os.path.exists(path_db):
         dbquery = query_database.DbQuery(path_db)
+        print(path_db)
         if img_id is not None:
             df = dbquery.get_images(img_id=img_id)
             row = df.iloc[0]
@@ -509,7 +510,7 @@ def show_results_images(pathname, search, n_clicks, startDate, endDate, cam_id, 
             for cam_id in list_cams:
                 cam_images=[]
                 for idx_cam, row_cam in df[df.cam_id == cam_id].iterrows():
-                    db_reid = query_reid.DbQuery()
+                    db_reid = query_reid.DbQuery(path_db)
                     df_query = db_reid.get_images(row_cam.img_id)
                     for idx_query, row_query in df_query.iterrows():
                         encoded_image = base64.b64encode(row_query.img)
@@ -586,7 +587,7 @@ def UpdateResultsFilter(pathname, search):
 
 
 def get_database_options():
-    path_folder = f'{os.getcwd()}\\reid'
+    path_folder = f'../reid/archive'
     options = []
     for file in sorted(os.listdir(path_folder)):
         filePath = os.path.join(path_folder, file)

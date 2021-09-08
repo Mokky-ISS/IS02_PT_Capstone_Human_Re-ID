@@ -2,8 +2,8 @@ from database.database import DbQuery
 
 
 class DbQuery(DbQuery):
-    def __init__(self) -> None:
-        super().__init__('reid/reid_db.db')
+    def __init__(self, path_db) -> None:
+        super().__init__(path_db)
 
 
     def get_images(self, img_id):
