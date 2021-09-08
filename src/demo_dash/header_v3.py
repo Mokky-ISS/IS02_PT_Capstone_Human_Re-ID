@@ -18,7 +18,7 @@ sp_logo = dbc.Col(
     align='start',
 )
 
-title_text = 'Re-Identification Demo'
+title_text = 'Re-Identification'
 
 title = dbc.Col(
     id='title-col',

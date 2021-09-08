@@ -39,7 +39,7 @@ external_stylesheets = [
 ]
 
 app = dash.Dash(
-    __name__, title="RE-ID Dash Demo",
+    __name__, title="RE-ID Dash",
     external_stylesheets=external_stylesheets,
     suppress_callback_exceptions=True,
     meta_tags=[{
@@ -90,6 +90,8 @@ SIDEBAR_STYLE = {
 
 
 def home_page_content():
+    global _reid_db_path
+    _reid_db_path = None
     headerColWidth=2
     content = dbc.Col(
         id='home-page',
@@ -348,7 +350,6 @@ def update_camera_ids(path_db):
 def show_database_images(path_db, start_date, end_date, cam_id, upload_img, upload_filename):
     dict_trig = get_callback_trigger()
     if 'upload-image' in dict_trig:
-        #print(type(upload_img))
         tooltip_msg = f"File name: {upload_filename}"
         return [
             dbc.Card([
@@ -377,7 +378,6 @@ def show_database_images(path_db, start_date, end_date, cam_id, upload_img, uplo
             cam_id=cam_id, start_datetime=None, end_datetime=None)
         images_col = []
         for _, row in df_images.iterrows():
-            print(type(row.img))
             encoded_image = base64.b64encode(row.img)
             components = [
                 #html.P(f'Camera {row.cam_id}', style={'text-overflow': 'ellipsis', 'width': '8vw', 'margin': '0'})
@@ -475,12 +475,9 @@ def show_results_images(pathname, search, n_clicks, startDate, endDate, cam_id, 
     if threshold is None:
         threshold = 0.6
 
-    dictTrig = get_callback_trigger()
-    print(path_db, img_id, n_clicks, startDate, endDate, cam_id, threshold)
     row_images = []
     if path_db is not None and (img_id is not None or img is not None) and os.path.exists(path_db):
         dbquery = query_database.DbQuery(path_db)
-        print(path_db)
         if img_id is not None:
             df = dbquery.get_images(img_id=img_id)
             row = df.iloc[0]

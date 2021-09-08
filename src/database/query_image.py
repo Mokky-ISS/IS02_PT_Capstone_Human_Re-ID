@@ -31,5 +31,4 @@ class DbQuery(DbQuery):
                 query += " WHERE"
             query += f" timestamp <= '{end_datetime}'"
         query += " ORDER BY cam_id, timestamp"
-        #print(query)
         return super().query_data(query)

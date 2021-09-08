@@ -42,5 +42,4 @@ class DbQuery(DbQuery):
                 query += " WHERE"
             query += f" img_id == '{img_id}'"
         query += " ORDER BY cam_id, timestamp"
-        #print(query)
         return super().query_data(query)
