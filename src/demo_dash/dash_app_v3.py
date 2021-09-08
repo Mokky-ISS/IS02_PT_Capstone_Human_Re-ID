@@ -648,17 +648,14 @@ def run_reid(img, db_path, threshold=0.6):
     init_reid(db_path)
     global _reid
     #to_sqlite.db_path = db_path
-    print(type(img))
     if isinstance(img, bytes):
         pil_img = to_sqlite.convertBlobtoIMG(img)
     elif isinstance(img,str):
-        print(type(img))
         encoded_image = img.split(",")[1]
         decoded_image = base64.b64decode(encoded_image)
         bytes_image = io.BytesIO(decoded_image)
         pil_img = Image.open(bytes_image).convert('RGB')
 
-    print(type(pil_img))
     query_feat = _reid.to_query_feat(pil_img)
     return _reid.infer(query_feat, thres=threshold)
 
