@@ -1,7 +1,7 @@
 from reid_inference import Reid
 import time
 
-db_path = '../reid/archive/Reid_20210903.db'
+db_path = '../reid/archive/Reid_20210909.db'
 reid = Reid(db_path)
 while True:
     reid.run_reid()

@@ -173,7 +173,7 @@ def run_human_tracker(_argv):
 
     # Saliant sampling soft threshold
     #soft_thred = 0.08
-    soft_thred = 0.15
+    soft_thred = 0.10
     #soft_thred = 0.01
 
     # initialize deep sort
