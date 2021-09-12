@@ -127,27 +127,29 @@ def run_human_tracker(_argv):
 
     # Important Note: to set gpu in TF, refer to this link https://stackoverflow.com/questions/40069883/how-to-set-specific-gpu-in-tensorflow
     # Only change the gpu number here, dont change the gpus[0] in other lines.
-    os.environ["CUDA_VISIBLE_DEVICES"]=str(FLAGS.gpu)
-    gpus = tf.config.list_physical_devices('GPU')
-    if gpus:
-        try:
-            #tf.config.experimental.set_visible_devices(gpus[0:1], 'GPU')
-            # Currently, memory growth needs to be the same across GPUs
+    def set_gpu(gpu_num):
+        os.environ["CUDA_VISIBLE_DEVICES"]=str(gpu_num)
+        gpus = tf.config.list_physical_devices('GPU')
+        if gpus:
+            try:
+                #tf.config.experimental.set_visible_devices(gpus[0:1], 'GPU')
+                # Currently, memory growth needs to be the same across GPUs
 
-            #for gpu in gpus:
-            print("FLAGS.gpu: ", FLAGS.gpu)
-            tf.config.experimental.set_visible_devices(gpus[FLAGS.gpu], 'GPU')
-            #tf.config.experimental.set_memory_growth(gpu, True)
-            tf.config.set_logical_device_configuration(
-                gpus[FLAGS.gpu],
-                [tf.config.LogicalDeviceConfiguration(memory_limit=1024)])
-            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-            print("[Cam "+str(FLAGS.cam_id)+"]:", len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-            print("Check gpus:",gpus)
-            print(logical_gpus)
-        except RuntimeError as e:
-            # Memory growth must be set before GPUs have been initialized
-            print(e)
+                #for gpu in gpus:
+                print("FLAGS.gpu: ", gpu_num)
+                tf.config.experimental.set_visible_devices(gpus[gpu_num], 'GPU')
+                #tf.config.experimental.set_memory_growth(gpu, True)
+                tf.config.set_logical_device_configuration(
+                    gpus[gpu_num],
+                    [tf.config.LogicalDeviceConfiguration(memory_limit=1024)])
+                logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+                print("[Cam "+str(FLAGS.cam_id)+"]:", len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+                print("Check gpus:",gpus)
+                print(logical_gpus)
+            except RuntimeError as e:
+                # Memory growth must be set before GPUs have been initialized
+                print(e)
+    set_gpu(FLAGS.gpu)
     #mirrored_strategy = tf.distribute.MirroredStrategy(devices=["/gpu:0"])
 
     # Increase max_cosine_distance variable to reduce identity switching.
@@ -483,9 +485,11 @@ def run_human_tracker(_argv):
 
                     if b_pose and b_blur:
                         if FLAGS.reid:
-                            # run reid inference process
+                            # run reid inference process, set gpu to gpu0
+                            set_gpu(0)
                             img_id = reid.get_imgid(FLAGS.cam_id, track.track_id)
                             reid.run(img_id, patch_img)
+                            set_gpu(FLAGS.gpu)
                             #if FLAGS.db:
                             #    img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np)
                         #else:
