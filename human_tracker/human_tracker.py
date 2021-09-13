@@ -188,16 +188,19 @@ def run_human_tracker(_argv):
 
     print("FlagGPU: ", FLAGS.gpu)
     # load configuration for object detector
-    config = ConfigProto()
-    #config.gpu_options.per_process_gpu_memory_fraction = 0.2
-    #if FLAGS.online:
-    config.gpu_options.visible_device_list = str(FLAGS.gpu)   
-    config.gpu_options.allow_growth = False
-    session = InteractiveSession(config=config)
-    devices = session.list_devices()
-    print("Session devices: ")
-    for d in devices:
-        print(d.name)
+    def set_gpu_tf1(gpu_num):
+        config = ConfigProto()
+        #config.gpu_options.per_process_gpu_memory_fraction = 0.2
+        #if FLAGS.online:
+        config.gpu_options.visible_device_list = str(gpu_num)   
+        config.gpu_options.allow_growth = False
+        session = InteractiveSession(config=config)
+        devices = session.list_devices()
+        print("Session devices: ")
+        for d in devices:
+            print(d.name)
+    set_gpu_tf1(FLAGS.gpu)    
+        
     STRIDES, ANCHORS, NUM_CLASS, XYSCALE = utils.load_config(FLAGS)
     input_size = FLAGS.size
     video_path = None
@@ -487,9 +490,11 @@ def run_human_tracker(_argv):
                         if FLAGS.reid:
                             # run reid inference process, set gpu to gpu0
                             set_gpu(0)
+                            set_gpu_tf1(0)
                             img_id = reid.get_imgid(FLAGS.cam_id, track.track_id)
                             reid.run(img_id, patch_img)
                             set_gpu(FLAGS.gpu)
+                            set_gpu_tf1(FLAGS.gpu)
                             #if FLAGS.db:
                             #    img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np)
                         #else:
