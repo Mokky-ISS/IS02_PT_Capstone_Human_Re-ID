@@ -28,7 +28,7 @@ class reid_inference:
         self.Cfg = Config()
         self.model = make_model(self.Cfg, 255)
         self.model.load_param(self.Cfg.TEST_WEIGHT)
-        self.model = self.model.to('cuda:1')
+        self.model = self.model.to('cuda:0')
         self.transform = T.Compose([
                 T.Resize(self.Cfg.INPUT_SIZE),
                 T.ToTensor(),
@@ -60,13 +60,13 @@ class reid_inference:
             query_img = image_patch_or_path
         
         input = torch.unsqueeze(self.transform(query_img), 0)
-        input = input.to('cuda:1')
+        input = input.to('cuda:0')
         with torch.no_grad():
             if flip:
-                gal_feat = torch.FloatTensor(input.size(0), 2048).zero_().cuda()
+                gal_feat = torch.FloatTensor(input.size(0), 2048).zero_().cuda(0)
                 for i in range(2):
                     if i == 1:
-                        inv_idx = torch.arange(input.size(3) - 1, -1, -1).long().cuda()
+                        inv_idx = torch.arange(input.size(3) - 1, -1, -1).long().cuda(0)
                         input = input.index_select(3, inv_idx)
                     f = self.model(input)
                     gal_feat = gal_feat + f
@@ -122,7 +122,7 @@ class reid_inference:
         indices = np.argsort(dist_mat)[::-1][:rerank_range] #to test if use 50 or use all better
         
         if reranking:
-            candidate_gal_feat = torch.index_select(self.all_gal_feat, 0, torch.tensor([indices]).cuda()[0])
+            candidate_gal_feat = torch.index_select(self.all_gal_feat, 0, torch.tensor([indices]).cuda(0)[0])
             rerank_dist = re_ranking(query_feat, candidate_gal_feat, k1=30, k2=6, lambda_value=0.3)[0]
             rerank_idx = np.argsort(1-rerank_dist)[::-1]
             indices = np.array([indices[i] for i in rerank_idx])
