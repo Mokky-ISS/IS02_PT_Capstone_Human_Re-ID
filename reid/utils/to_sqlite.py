@@ -9,17 +9,17 @@ import io
 # default path, will be changed by other script.
 db_path = '../reid/database/reid_db.db'
 
-def insert_vector_db(img_id, img, feat_vec, cam_id, track_id):
+def insert_vector_db(img_id, img, feat_vec, cam_id, track_id, loc):
     try:
         sqliteConnection = sqlite3.connect(db_path)
         cursor = sqliteConnection.cursor()
     
         Query = """
-            INSERT INTO vectorkb_table (img_id, img, vector_tensor, cam_id, track_id) 
-            VALUES (?,?,?,?,?)
+            INSERT INTO vectorkb_table (img_id, img, vector_tensor, cam_id, track_id, loc) 
+            VALUES (?,?,?,?,?,?)
             """
 
-        array = (img_id, img, feat_vec, cam_id, track_id)
+        array = (img_id, img, feat_vec, cam_id, track_id, loc)
         Query = cursor.execute(Query, array)
         sqliteConnection.commit()
 

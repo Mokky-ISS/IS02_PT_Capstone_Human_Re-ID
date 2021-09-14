@@ -43,10 +43,8 @@ class reid_inference:
         self._tmp_galfeat = ""
         print('Data loaded. You can start infer an image using to_gallery_feat --> query_feat --> infer')
 
-    #def get_gpu_num():
-    #    table = pd.read_excel(FLAGS.rtsp_path, dtype={'Camera RTSP Stream': str,  'Channel': int}, engine='openpyxl')
 
-    def to_gallery_feat(self, img_id, image_patch_or_path, flip=True, norm=True):
+    def to_gallery_feat(self, img_id, image_patch_or_path, loc, flip=True, norm=True):
         """
         Use to build gallery feat on images picked from Deep Sort.
         This is different from normal query feature extraction as this has flipped & normed feature,
@@ -79,7 +77,7 @@ class reid_inference:
             query_img_blob = convertImgtoBlob(query_img)
             cam_id = img_id.split('_')[0]
             track_id = img_id.split('_')[1]
-            insert_vector_db(img_id, query_img_blob, pickle.dumps(gal_feat), cam_id, track_id)
+            insert_vector_db(img_id, query_img_blob, pickle.dumps(gal_feat), cam_id, track_id, loc)
             self.all_img_id.append(img_id)
             self.all_patch_img.append(query_img)
             self.all_gal_feat = torch.cat([self.all_gal_feat, gal_feat])

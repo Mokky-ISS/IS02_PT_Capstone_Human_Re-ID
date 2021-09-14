@@ -35,7 +35,8 @@ def camera_capture(*args):
         flags.DEFINE_integer('cam_id', args[1], 'camera ID to run on different camera')
         flags.DEFINE_string('rtsp', args[2], 'rtsp to run on different camera')
         flags.DEFINE_integer('gpu', args[3], 'gpu to run on different camera')
-        flags.DEFINE_string('db_path', args[4], 'database save path.')
+        flags.DEFINE_string('loc', args[4], 'loc to run on different camera')
+        flags.DEFINE_string('db_path', args[5], 'database save path.')
         print("db_path check: ", args[4])
         # args[-1] is manager.Value from multiprocessing 
         #flags.DEFINE_integer('stop_tracker', args[-1].value, 'run or stop human tracker')
@@ -492,7 +493,7 @@ def run_human_tracker(_argv):
                             #set_gpu(0)
                             #set_gpu_tf1(0)
                             img_id = reid.get_imgid(FLAGS.cam_id, track.track_id)
-                            reid.run(img_id, patch_img)
+                            reid.run(img_id, patch_img, FLAGS.loc)
                             #set_gpu(FLAGS.gpu)
                             #set_gpu_tf1(FLAGS.gpu)
                             #if FLAGS.db:

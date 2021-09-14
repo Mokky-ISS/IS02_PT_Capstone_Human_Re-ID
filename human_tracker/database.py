@@ -18,7 +18,7 @@ class ImageDB(object):
         #self.col_titles = "(img_id INT, cam_id INT, timestamp TIMESTAMP, track_id INT, patch_img BLOB, patch_np array, patch_bbox array, frame_num INT, img_res_width INT, img_res_height INT)"
         # Important: Make sure the created column name in new table is same as the selected column name during selection by load_gallery_from_db from reid/utils/to_sqlite.py!
         #self.col_titles = "(img_id INT, img BLOB, vector_tensor array, create_datetime TIMESTAMP, cam_id INT, track_id INT)"
-        self.col_titles = "(img_id VARCHAR(255) UNIQUE, img BLOB, vector_tensor BLOB, create_datetime DATETIME DEFAULT (CURRENT_TIMESTAMP), cam_id INTEGER, track_id TEXT)"
+        self.col_titles = "(img_id VARCHAR(255) UNIQUE, img BLOB, vector_tensor BLOB, create_datetime DATETIME DEFAULT (CURRENT_TIMESTAMP), cam_id INTEGER, track_id TEXT, loc TEXT)"
         self.data = None
         self.image_name = []
         # Converts np.array to TEXT when inserting

@@ -38,10 +38,10 @@ class Reid():
         img_id = str(cam_id) + '_' + str(track_id) + '_' + str(time_filename) 
         return img_id
 
-    def run(self, imgid, img):
+    def run(self, imgid, img, loc):
         start_time = time.time()
         pil_img = convertBlobtoIMG(img)
-        self.reid.to_gallery_feat(imgid, pil_img) #always set FLIP = FALSE
+        self.reid.to_gallery_feat(imgid, pil_img, loc) #always set FLIP = FALSE
         #query_feat = self.reid.to_query_feat(img)
         #self.reid.infer(query_feat, imgid, reranking=True) #always RERANKING = TRUE
         print("[Reid.to_gallery_feat]: --- %s seconds ---" % (time.time() - start_time))

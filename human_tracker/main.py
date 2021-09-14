@@ -203,13 +203,13 @@ def sequential_run(batch, cam, db_path, mps):
     for j in mps.job:
         j.join()
 
-def online_run(rtsp, cam, gpu, db_path, mps):
+def online_run(rtsp, cam, gpu, loc, db_path, mps):
     mps.job.clear()
     #mps.new_job('database_ps', db_process, cam, FLAGS.parallel_ps, FLAGS.reid_db_path, FLAGS.merge_db_path)
     mps.cam = cam
     for i in range(FLAGS.parallel_ps):
         # cam[i]:int , rtsp[i]:str
-        mps.new_job('camera_ch' + str(cam[i]), camera_capture, FLAGS.online, cam[i], rtsp[i], gpu[i], db_path)
+        mps.new_job('camera_ch' + str(cam[i]), camera_capture, FLAGS.online, cam[i], rtsp[i], gpu[i], loc[i], db_path)
         print("New online process for cam " + str(cam[i]))
     for j in mps.job:
         j.start()
@@ -280,7 +280,7 @@ def main(_argv):
     # online mode
     if FLAGS.online:
         table = get_rtsp(FLAGS.rtsp_path)
-        online_run(table.to_dict('dict')['rtsp'], table.to_dict('dict')['cam'], table.to_dict('dict')['gpu'], mps.db_path, mps)
+        online_run(table.to_dict('dict')['rtsp'], table.to_dict('dict')['cam'], table.to_dict('dict')['gpu'], table.to_dict('dict')['loc'], mps.db_path, mps)
     # offline mode
     else:
         if not FLAGS.video.isdigit():      
