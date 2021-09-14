@@ -199,7 +199,7 @@ def run_human_tracker(_argv):
         print("Session devices: ")
         for d in devices:
             print(d.name)
-    set_gpu_tf1(FLAGS.gpu)    
+    #set_gpu_tf1(FLAGS.gpu)    
         
     STRIDES, ANCHORS, NUM_CLASS, XYSCALE = utils.load_config(FLAGS)
     input_size = FLAGS.size
@@ -489,12 +489,12 @@ def run_human_tracker(_argv):
                     if b_pose and b_blur:
                         if FLAGS.reid:
                             # run reid inference process, set gpu to gpu0
-                            set_gpu(0)
-                            set_gpu_tf1(0)
+                            #set_gpu(0)
+                            #set_gpu_tf1(0)
                             img_id = reid.get_imgid(FLAGS.cam_id, track.track_id)
                             reid.run(img_id, patch_img)
-                            set_gpu(FLAGS.gpu)
-                            set_gpu_tf1(FLAGS.gpu)
+                            #set_gpu(FLAGS.gpu)
+                            #set_gpu_tf1(FLAGS.gpu)
                             #if FLAGS.db:
                             #    img_db.insert_data(FLAGS.cam_id, track.track_id, patch_img, patch_np)
                         #else:

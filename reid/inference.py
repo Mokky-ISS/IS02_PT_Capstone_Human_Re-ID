@@ -16,7 +16,7 @@ from torch.backends import cudnn
 import torchvision.transforms as T
 from utils.metrics import cosine_similarity, euclidean_distance
 import pickle
-
+import pandas as pd
 
 class reid_inference:
     """Reid Inference class.
@@ -28,7 +28,7 @@ class reid_inference:
         self.Cfg = Config()
         self.model = make_model(self.Cfg, 255)
         self.model.load_param(self.Cfg.TEST_WEIGHT)
-        self.model = self.model.to('cuda:0')
+        self.model = self.model.to('cuda:1')
         self.transform = T.Compose([
                 T.Resize(self.Cfg.INPUT_SIZE),
                 T.ToTensor(),
@@ -43,6 +43,8 @@ class reid_inference:
         self._tmp_galfeat = ""
         print('Data loaded. You can start infer an image using to_gallery_feat --> query_feat --> infer')
 
+    #def get_gpu_num():
+    #    table = pd.read_excel(FLAGS.rtsp_path, dtype={'Camera RTSP Stream': str,  'Channel': int}, engine='openpyxl')
 
     def to_gallery_feat(self, img_id, image_patch_or_path, flip=True, norm=True):
         """
@@ -58,7 +60,7 @@ class reid_inference:
             query_img = image_patch_or_path
         
         input = torch.unsqueeze(self.transform(query_img), 0)
-        input = input.to('cuda:0')
+        input = input.to('cuda:1')
         with torch.no_grad():
             if flip:
                 gal_feat = torch.FloatTensor(input.size(0), 2048).zero_().cuda()
