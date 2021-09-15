@@ -128,7 +128,7 @@ def load_gallery_from_db():
 
     except IndexError:
         #empty table
-        return [],[],torch.tensor([]).cuda(),[]
+        return [],[],torch.tensor([]).cuda(0),[]
 
     except Error as err:
         print("Connection error to Sql", err)
