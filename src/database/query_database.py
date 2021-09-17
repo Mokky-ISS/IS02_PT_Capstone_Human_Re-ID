@@ -1,4 +1,5 @@
 from database.database import DbQuery
+import datetime
 
 class DbQuery(DbQuery):
     def __init__(self, db_path) -> None:
@@ -11,12 +12,26 @@ class DbQuery(DbQuery):
         return df.name.tolist()
 
     def get_cam_id_options(self):
-        query = f"SELECT DISTINCT(cam_id) FROM {self.table}"
+        query = f"SELECT * FROM {self.table} LIMIT 1"
         df = super().query_data(query)
-        return [{'label': f'Camera {id}', 'value': id} for id in sorted(df['cam_id'].values) if int(id) > 0]
+        if "loc" in df.columns:
+            query = f"SELECT DISTINCT cam_id, loc FROM {self.table} ORDER BY cam_id"
+        else:
+            query = f"SELECT DISTINCT cam_id FROM {self.table} ORDER BY cam_id"
+        df = super().query_data(query)
+
+        if "loc" in df.columns:
+            return [{'label': f'Camera {row.cam_id} {row["loc"]}', 'value': row.cam_id} for _, row in df.iterrows() if row.cam_id > 0]
+        else:
+            return [{'label': f'Camera {row.cam_id}', 'value': row.cam_id} for _, row in df.iterrows() if row.cam_id > 0]
 
     def get_images(self, cam_id=None, start_datetime=None, end_datetime=None, img_id=None):
-        query = f"SELECT img_id, cam_id, create_datetime AS timestamp, img AS img FROM {self.table}"
+        query = f"SELECT * FROM {self.table} LIMIT 1"
+        df = super().query_data(query)
+        if "loc" in df.columns:
+            query = f"SELECT img_id, cam_id, loc, create_datetime AS timestamp, img AS img FROM {self.table}"
+        else:
+            query = f"SELECT img_id, cam_id, create_datetime AS timestamp, img AS img FROM {self.table}"
         if cam_id is not None:
             if " WHERE " in query:
                 query += " AND"
@@ -34,7 +49,7 @@ class DbQuery(DbQuery):
                 query += " AND"
             else:
                 query += " WHERE"
-            query += f" timestamp <= '{end_datetime}'"
+            query += f" timestamp < '{end_datetime}'"
         if img_id is not None:
             if " WHERE " in query:
                 query += " AND"
@@ -43,3 +58,8 @@ class DbQuery(DbQuery):
             query += f" img_id == '{img_id}'"
         query += " ORDER BY cam_id, timestamp"
         return super().query_data(query)
+
+    def get_date_range(self):
+        query = f"SELECT MIN(create_datetime) AS min_date, MAX(create_datetime) AS max_date FROM {self.table}"
+        df = super().query_data(query)
+        return df.iloc[0].min_date, df.iloc[0].max_date

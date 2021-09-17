@@ -22,7 +22,7 @@ import mediapipe as mp
 import dash_datetimepicker
 import sys
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 sys.path.append('../')
 sys.path.append(f'../reid')
 #import inference
@@ -104,12 +104,41 @@ def home_page_content():
                     dbc.Col(dcc.Dropdown(id='database-id',
                             options=get_database_options()), width=True),
                 ]),
-                html.Br(),
+            ])),
+            html.Br(),
+            dbc.Card(dbc.CardBody([
                 dbc.Row([
-                    dbc.Col(html.P('Select Date & Time', style={
+                    dbc.Col(html.P('Start Date & Time', style={
                             'font-weight': 'bold'}), width=headerColWidth),
-                    dbc.Col(dash_datetimepicker.DashDatetimepicker(
-                        id='datetime-range-id'), width=True),
+                    dbc.Col([
+                            dbc.Row([
+                                dbc.Col(html.P('Date:', style={'font-weight': 'bold'}), width='auto', align='center'),
+                                dbc.Col(dcc.DatePickerSingle(id='db-date-start-id',display_format='DD-MM-YYYY'), width='auto'),
+                                dbc.Col(html.P('Hour (0 ~ 23):', style={'font-weight': 'bold'}), width='auto', align='center'),
+                                dbc.Col(dbc.Input(id='db-time-start-hr-id', type='number', min=0, max=23), width=1),
+                                dbc.Col(html.P('Minute (0 ~ 59):', style={'font-weight': 'bold'}), width='auto', align='center'),
+                                dbc.Col(dbc.Input(id='db-time-start-min-id', type='number', min=0, max=59), width=1),
+                            ]),
+                            #dash_datetimepicker.DashDatetimepicker(id='datetime-range-id'),
+                        ],
+                        width=True
+                    ),
+                ]),
+                dbc.Row([
+                    dbc.Col(html.P('End Date & Time', style={
+                            'font-weight': 'bold'}), width=headerColWidth),
+                    dbc.Col([
+                            dbc.Row([
+                                dbc.Col(html.P('Date:', style={'font-weight': 'bold'}), width='auto', align='center'),
+                                dbc.Col(dcc.DatePickerSingle(id='db-date-end-id',display_format='DD-MM-YYYY'), width='auto'),
+                                dbc.Col(html.P('Hour (0 ~ 23):', style={'font-weight': 'bold'}), width='auto', align='center'),
+                                dbc.Col(dbc.Input(id='db-time-end-hr-id', type='number', min=0, max=23), width=1),
+                                dbc.Col(html.P('Minute (0 ~ 59):', style={'font-weight': 'bold'}), width='auto', align='center'),
+                                dbc.Col(dbc.Input(id='db-time-end-min-id', type='number', min=0, max=59), width=1),
+                            ]),
+                        ],
+                        width=True
+                    ),
                 ]),
                 html.Br(),
                 dbc.Row([
@@ -117,12 +146,20 @@ def home_page_content():
                             'font-weight': 'bold'}), width=headerColWidth),
                     dbc.Col(dcc.Dropdown(id='camera-id'), width=True),
                 ]),
-            ])),
-            html.Br(),
-            # Upload image
-            dbc.Card(dbc.CardBody([
+
+                # Line separator
                 dbc.Row([
-                    dbc.Col(html.P('Upload an image', style={'font-weight': 'bold'}), width=headerColWidth),
+                    dbc.Col(html.Hr(), align='center'),
+                    dbc.Col(
+                        html.P("or", style={'font-weight': 'bold'}), align='center', width='auto'),
+                    dbc.Col(html.Hr(), align='center'),
+                ],
+                    align='start',
+                ),
+
+                dbc.Row([
+                    dbc.Col(html.P('Upload an image', style={
+                            'font-weight': 'bold'}), width=headerColWidth),
                     dbc.Col(
                         dcc.Upload(
                             id='upload-image',
@@ -130,11 +167,11 @@ def home_page_content():
                             multiple=False,
                             children=[
                                 dbc.Button('Click to upload',
-                                            id='upload-image-button',
-                                        color='primary',
-                                        block=True,
-                                        size="lg",
-                                        style={'word-wrap':'normal'})
+                                           id='upload-image-button',
+                                           color='primary',
+                                           block=True,
+                                           size="lg",
+                                           style={'word-wrap': 'normal'})
                             ],
                         ),
                         width='auto',
@@ -142,18 +179,13 @@ def home_page_content():
                 ]),
                 html.P('Picture Requirement:', style={'font-size': 'small'}),
                 html.P('• Best with aspect ratio of 1:2 i.e. 128W, 256H',
-                    style={'font-size': 'small'}),
+                       style={'font-size': 'small'}),
                 html.P('• Full body image from head to toe',
-                    style={'font-size': 'small'}),
-
-                # Line separator
-                dbc.Row([
-                    dbc.Col(html.Hr(), align='center'),
-                    dbc.Col(html.P("or", style={'font-weight': 'bold'}), align='center',width='auto'),
-                    dbc.Col(html.Hr(), align='center'),
-                    ],
-                    align='start',
-                ),
+                       style={'font-size': 'small'}),
+            ])),
+            html.Br(),
+            # Upload image
+            dbc.Card(dbc.CardBody([
 
                 dbc.Row([
                     dbc.Col([
@@ -213,6 +245,7 @@ def results_page_content(params):
     # Show selected image
     if path_db is not None and os.path.exists(path_db):
         dbquery = query_database.DbQuery(path_db)
+        minDate, maxDate = dbquery.get_date_range()
         details_row = []
         image=None
         if img_id is not None:
@@ -241,6 +274,14 @@ def results_page_content(params):
                     [
                         html.B('Camera ID:', style={'margin-right': '5px'}),
                         html.P(row.cam_id),
+                    ],
+                    #className="card-text",
+                ))
+            if "loc" in df.columns and row["loc"] is not None:
+                details_row.append(dbc.Row(
+                    [
+                        html.B('Location:', style={'margin-right': '5px'}),
+                        html.P(row["loc"]),
                     ],
                     #className="card-text",
                 ))
@@ -279,12 +320,54 @@ def results_page_content(params):
             dbc.CardBody([
                 html.H6('Search Filter', style={
                     'font-weight': 'bold', 'color': '#007fcf',}),
-                html.Br(),
+                #html.Br(),
                 dbc.Col([
-                        html.P('Select Date & Time', style={
-                               'font-weight': 'bold'}),
-                        dash_datetimepicker.DashDatetimepicker(
-                            id='results-filter-datetime'),
+                        html.P('Select Start Date & Time', style={'font-weight': 'bold'}),
+                        dbc.Col([
+                            dbc.Row([
+                                dbc.Col(html.P('Date:'), width='auto', align='center'),
+                                dbc.Col(
+                                    dcc.DatePickerSingle(
+                                        id='results-filter-date-start-id',
+                                        display_format='DD-MM-YYYY',
+                                        min_date_allowed=minDate,
+                                        max_date_allowed=maxDate),
+                                    width=True),
+                            ]),
+                            dbc.Row([
+                                dbc.Col(html.P('Hour (0 ~ 23):'), width='auto', align='center'),
+                                dbc.Col(dbc.Input(id='results-filter-time-start-hr-id', type='number', min=0, max=23), width=True),
+                            ]),
+                            dbc.Row([
+                                dbc.Col(html.P('Minute (0 ~ 59):'), width='auto', align='center'),
+                                dbc.Col(dbc.Input(id='results-filter-time-start-min-id', type='number', min=0, max=59), width=True),
+                            ]),
+                        ]),
+                        #dash_datetimepicker.DashDatetimepicker(id='results-filter-datetime'),
+                        ], style={'padding': '1%'}),
+                dbc.Col([
+                        html.P('Select End Date & Time', style={'font-weight': 'bold'}),
+                        dbc.Col([
+                            dbc.Row([
+                                dbc.Col(html.P('Date:'), width='auto', align='center'),
+                                dbc.Col(
+                                    dcc.DatePickerSingle(
+                                        id='results-filter-date-end-id',
+                                        display_format='DD-MM-YYYY',
+                                        min_date_allowed=minDate,
+                                        max_date_allowed=maxDate),
+                                    width=True),
+                            ]),
+                            dbc.Row([
+                                dbc.Col(html.P('Hour (0 ~ 23):'), width='auto', align='center'),
+                                dbc.Col(dbc.Input(id='results-filter-time-end-hr-id', type='number', min=0, max=23), width=True),
+                            ]),
+                            dbc.Row([
+                                dbc.Col(html.P('Minute (0 ~ 59):'), width='auto', align='center'),
+                                dbc.Col(dbc.Input(id='results-filter-time-end-min-id', type='number', min=0, max=59), width=True),
+                            ]),
+                        ]),
+                        #dash_datetimepicker.DashDatetimepicker(id='results-filter-datetime'),
                         ], style={'padding': '1%'}),
                 dbc.Col([
                         html.P('Camera ID', style={'font-weight': 'bold'}),
@@ -336,18 +419,80 @@ def update_camera_ids(path_db):
 def update_camera_ids(path_db):
     return path_db is None
 
+@app.callback(
+    Output(component_id='db-date-start-id', component_property='min_date_allowed'),
+    Output(component_id='db-date-end-id', component_property='max_date_allowed'),
+    Input(component_id='database-id', component_property='value'),
+)
+def update_db_start_date_min_end_date_max(path_db):
+    if path_db is not None:
+        dbquery = query_database.DbQuery(path_db)
+        minDate, maxDate = dbquery.get_date_range()
+        return minDate, maxDate
+    else:
+        return None, None
 
+@app.callback(
+    Output(component_id='db-date-start-id', component_property='max_date_allowed'),
+    Input(component_id='db-date-end-id', component_property='date'),
+    Input(component_id='db-date-end-id', component_property='max_date_allowed'),
+)
+def update_db_start_date_max(end_date, end_max_date):
+    if end_date is not None:
+        return end_date
+    else:
+        return end_max_date
+
+
+@app.callback(
+    Output(component_id='db-date-end-id', component_property='min_date_allowed'),
+    Input(component_id='db-date-start-id', component_property='date'),
+    Input(component_id='db-date-start-id', component_property='min_date_allowed'),
+)
+def update_db_end_date_min(start_date, start_min_date):
+    if start_date is not None:
+        return start_date
+    else:
+        return start_min_date
+
+
+@app.callback(
+    Output(component_id='results-filter-date-start-id',component_property='max_date_allowed'),
+    Input(component_id='results-filter-date-end-id', component_property='date'),
+    Input(component_id='results-filter-date-end-id', component_property='max_date_allowed'),
+)
+def update_results_start_date_max(end_date, end_max_date):
+    if end_date is not None:
+        return end_date
+    else:
+        return end_max_date
+
+
+@app.callback(
+    Output(component_id='results-filter-date-end-id',component_property='min_date_allowed'),
+    Input(component_id='results-filter-date-start-id', component_property='date'),
+    Input(component_id='results-filter-date-start-id',component_property='min_date_allowed'),
+)
+def update_results_end_date_min(start_date, start_min_date):
+    if start_date is not None:
+        return start_date
+    else:
+        return start_min_date
 
 @app.callback(
     Output(component_id='view-db-images', component_property='children'),
     Input(component_id='database-id', component_property='value'),
-    Input(component_id='datetime-range-id', component_property='startDate'),
-    Input(component_id='datetime-range-id', component_property='endDate'),
+    Input(component_id='db-date-start-id', component_property='date'),
+    Input(component_id='db-time-start-hr-id', component_property='value'),
+    Input(component_id='db-time-start-min-id', component_property='value'),
+    Input(component_id='db-date-end-id', component_property='date'),
+    Input(component_id='db-time-end-hr-id', component_property='value'),
+    Input(component_id='db-time-end-min-id', component_property='value'),
     Input(component_id='camera-id', component_property='value'),
     Input(component_id='upload-image', component_property='contents'),
     State(component_id='upload-image', component_property='filename'),
 )
-def show_database_images(path_db, start_date, end_date, cam_id, upload_img, upload_filename):
+def show_database_images(path_db, start_date, start_hour, start_minute, end_date, end_hour, end_minute, cam_id, upload_img, upload_filename):
     dict_trig = get_callback_trigger()
     if 'upload-image' in dict_trig:
         tooltip_msg = f"File name: {upload_filename}"
@@ -369,13 +514,12 @@ def show_database_images(path_db, start_date, end_date, cam_id, upload_img, uplo
                 ),
             ])
         ]
-    elif path_db is not None and \
-        start_date is not None and \
-            end_date is not None and \
-                cam_id is not None:
+    elif path_db is not None and cam_id is not None:
         dbimage = query_database.DbQuery(path_db)
+        start_datetime = compile_start_datetime(start_date, start_hour, start_minute)
+        end_datetime = compile_end_datetime(end_date, end_hour, end_minute)
         df_images = dbimage.get_images(
-            cam_id=cam_id, start_datetime=None, end_datetime=None)
+            cam_id=cam_id, start_datetime=start_datetime, end_datetime=end_datetime)
         images_col = []
         for _, row in df_images.iterrows():
             encoded_image = base64.b64encode(row.img)
@@ -408,9 +552,11 @@ def show_database_images(path_db, start_date, end_date, cam_id, upload_img, uplo
             if (row.img_id is not None):
                 tooltip_msg += f"Image ID: {row.img_id}\r\n"
             if (timestamp is not None):
-                tooltip_msg = f"Datetime: {timestamp}\r\n"
+                tooltip_msg += f"Datetime: {timestamp}\r\n"
             if (row.cam_id is not None):
                 tooltip_msg += f"Camera ID: {row.cam_id}\r\n"
+            if "loc" in df_images.columns:
+                tooltip_msg += f'Location: {row["loc"]}\r\n'
             images_col.append(
                 dbc.Card([
                     dbc.CardLink(
@@ -437,17 +583,21 @@ def show_database_images(path_db, start_date, end_date, cam_id, upload_img, uplo
     Input(component_id='url', component_property='pathname'),
     Input(component_id='url', component_property='search'),
     Input(component_id='results-filter-button', component_property='n_clicks'),
-    State(component_id='results-filter-datetime', component_property='startDate'),
-    State(component_id='results-filter-datetime', component_property='endDate'),
+    State(component_id='results-filter-date-start-id', component_property='date'),
+    State(component_id='results-filter-time-start-hr-id', component_property='value'),
+    State(component_id='results-filter-time-start-min-id', component_property='value'),
+    State(component_id='results-filter-date-end-id', component_property='date'),
+    State(component_id='results-filter-time-end-hr-id', component_property='value'),
+    State(component_id='results-filter-time-end-min-id', component_property='value'),
     State(component_id='results-filter-cam-id', component_property='value'),
     State(component_id='results-filter-threshold', component_property='value'),
 )
-def show_results_images(pathname, search, n_clicks, startDate, endDate, cam_id, threshold):
+def show_results_images(pathname, search, n_clicks, start_date, start_hour, start_minute, end_date, end_hour, end_minute, cam_id, threshold):
     dict_trig = get_callback_trigger()
 
     if 'url' in dict_trig or 'results-filter-button' not in dict_trig:
-        startDate = None
-        endDate = None
+        start_date = None
+        end_date = None
         cam_id = None
         threshold = None
 
@@ -503,63 +653,85 @@ def show_results_images(pathname, search, n_clicks, startDate, endDate, cam_id, 
             else:
                 list_cams = None
 
+        start_datetime = compile_start_datetime(start_date, start_hour, start_minute)
+        end_datetime = compile_end_datetime(end_date, end_hour, end_minute)
         if list_cams is not None and len(list_cams) > 0:
             for cam_id in list_cams:
                 cam_images=[]
+                header = f'Camera {cam_id}'
                 for idx_cam, row_cam in df[df.cam_id == cam_id].iterrows():
                     db_reid = query_reid.DbQuery(path_db)
                     df_query = db_reid.get_images(row_cam.img_id)
-                    for idx_query, row_query in df_query.iterrows():
-                        encoded_image = base64.b64encode(row_query.img)
-                        id_tag = f'result-img-id-{row_query.img_id}'
-                        cam_images.append(
-                            dbc.Card(
-                                children=[
-                                    dbc.CardImg(
-                                        src='data:image/png;base64,{}'.format(encoded_image.decode()),
-                                        id=id_tag,
-                                        #title=tooltip_msg.strip(),
-                                        style={
-                                            'width': '8vw',
-                                            'object-fit': 'contain',
-                                            #'margin':'5%',
-                                        },
-                                    ),
-                                    dbc.Tooltip([
-                                        html.P([
-                                            html.B('Image ID:'),
-                                            html.Br(),
-                                            html.Span(row_query.img_id),
-                                            html.Br(),
-                                            html.B('Date time detected:'),
-                                            html.Br(),
-                                            html.Span(row_query.timestamp),
-                                            html.Br(),
-                                            html.B('Similarity: '),
-                                            #html.Br(),
-                                            html.Span(round(row_cam.dist,4)),
-                                        ],
-                                            style={'text-align': 'left'},
+                    df_query.timestamp = pd.to_datetime(df_query.timestamp)
+                    if start_datetime is not None:
+                        df_query = df_query[df_query.timestamp >= start_datetime]
+                    if end_datetime is not None:
+                        df_query = df_query[df_query.timestamp < end_datetime]
+                    if len(df_query) > 0:
+                        if "loc" in df_query.columns:
+                            header = f'Camera {cam_id} {df_query[df_query.cam_id == cam_id]["loc"].iloc[0]}'
+                        for idx_query, row_query in df_query.iterrows():
+                            encoded_image = base64.b64encode(row_query.img)
+                            id_tag = f'result-img-id-{row_query.img_id}'
+                            tooltip = []
+                            if row_query.img_id is not None:
+                                tooltip.extend([
+                                    html.B('Image ID:'),
+                                    html.Br(),
+                                    html.Span(row_query.img_id),
+                                    html.Br(),
+                                ])
+                            if row_query.timestamp is not None:
+                                tooltip.extend([
+                                    html.B('Date time detected:'),
+                                    html.Br(),
+                                    html.Span(row_query.timestamp),
+                                    html.Br(),
+                                ])
+                            if row_cam.dist is not None:
+                                tooltip.extend([
+                                    html.B('Similarity: '),
+                                    #html.Br(),
+                                    html.Span(round(row_cam.dist,4)),
+                                ])
+                            cam_images.append(
+                                dbc.Card(
+                                    children=[
+                                        dbc.CardImg(
+                                            src='data:image/png;base64,{}'.format(encoded_image.decode()),
+                                            id=id_tag,
+                                            #title=tooltip_msg.strip(),
+                                            style={
+                                                'width': '8vw',
+                                                'object-fit': 'contain',
+                                                #'margin':'5%',
+                                            },
                                         ),
-                                        dbc.Button(
-                                            html.B('Query this'),
-                                            id=f'query-img-id-{row_query.img_id}',
-                                            size="md",
-                                            href=get_results_href(path_db, img_id=row_query.img_id),
-                                            ),
-                                        ],
-                                        target=id_tag,
-                                        autohide=False,
-                                        style={'font-size': 'small'},
-                                    )
-                                ]
-                            ))
-                row_images.append(
-                    dbc.Card([
-                        dbc.CardHeader(f'Camera {cam_id}', style={'font-weight': 'bold'}),
-                        dbc.CardBody(dbc.Row(cam_images),
-                                    style={'margin': '1%'},),
-                    ]))
+                                        dbc.Tooltip([
+                                            html.P(tooltip, style={'text-align': 'left'}),
+                                            dbc.Button(
+                                                html.B('Query this'),
+                                                id=f'query-img-id-{row_query.img_id}',
+                                                size="md",
+                                                href=get_results_href(path_db, img_id=row_query.img_id),
+                                                ),
+                                            ],
+                                            target=id_tag,
+                                            autohide=False,
+                                            style={'font-size': 'small'},
+                                        )
+                                    ]
+                                ))
+
+
+                if len(cam_images) > 0:
+                    row_images.append(
+                        dbc.Card([
+                            dbc.CardHeader(header, style={'font-weight': 'bold'}),
+                            dbc.CardBody(dbc.Row(cam_images),style={'margin': '1%'},),
+                        ]))
+            if len(row_images) <= 0:
+                row_images.append(html.P('No results found!'))
         else:
             row_images.append(html.P('No results found!'))
     return row_images
@@ -685,3 +857,26 @@ def get_results_href(path_db, img_id=None, img=None, img_filename=None, start_da
         url_dict['threshold'] = threshold
 
     return f'{urlResults}?{urlencode(url_dict)}'
+
+def compile_start_datetime(start_date, start_hour, start_minute):
+    if start_date is None:
+        return None
+    if start_hour is None:
+        start_hour = 0
+    if start_minute is None:
+        start_minute = 0
+    return compile_datetime(start_date, start_hour, start_minute)
+
+def compile_end_datetime(end_date, end_hour, end_minute):
+    if end_date is None:
+        return None
+    if end_hour is None or end_hour > 23:
+        return compile_datetime(end_date, 0, 0) + timedelta(days=1)
+    elif end_minute is None or end_minute > 59:
+        return compile_datetime(end_date, end_hour, 0) + timedelta(hours=1)
+    else:
+        return compile_datetime(end_date, end_hour, end_minute) + timedelta(minutes=1)
+
+def compile_datetime(date, hour, minute):
+    date_string = f"{date} {hour}:{minute}"
+    return datetime.strptime(date_string, "%Y-%m-%d %H:%M")

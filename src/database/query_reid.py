@@ -9,7 +9,13 @@ class DbQuery(DbQuery):
     def get_images(self, img_id):
         #query = "SELECT h.img_id, h.human_id, h.inference_datetime, i.img FROM human_table AS h"
         #query += " INNER JOIN vectorkb_table AS v ON h.img_id=v.img_id"
-        query = "SELECT img_id, cam_id, create_datetime AS timestamp, img FROM vectorkb_table AS v"
+        #query = "SELECT img_id, cam_id, create_datetime AS timestamp, img FROM vectorkb_table AS v"
+        query = f"SELECT * FROM vectorkb_table LIMIT 1"
+        df = super().query_data(query)
+        if "loc" in df.columns:
+            query = "SELECT img_id, cam_id, loc, create_datetime AS timestamp, img FROM vectorkb_table AS v"
+        else:
+            query = "SELECT img_id, cam_id, create_datetime AS timestamp, img FROM vectorkb_table AS v"
         #query += " INNER JOIN face_scores_table AS f ON h.img_id=f.img_id"
         if img_id is not None:
             if " WHERE " in query:
