@@ -428,7 +428,7 @@ def update_db_start_date_min_end_date_max(path_db):
     if path_db is not None:
         dbquery = query_database.DbQuery(path_db)
         minDate, maxDate = dbquery.get_date_range()
-        return minDate, maxDate
+        return minDate.strftime('%Y-%m-%d'), maxDate.strftime('%Y-%m-%d')
     else:
         return None, None
 

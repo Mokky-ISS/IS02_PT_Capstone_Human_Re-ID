@@ -1,5 +1,5 @@
 from database.database import DbQuery
-import datetime
+import pandas as pd
 
 class DbQuery(DbQuery):
     def __init__(self, db_path) -> None:
@@ -43,13 +43,13 @@ class DbQuery(DbQuery):
                 query += " AND"
             else:
                 query += " WHERE"
-            query += f" timestamp >= '{start_datetime}'"
+            query += f" (timestamp >= '{start_datetime}' OR timestamp = 'None')"
         if end_datetime is not None:
             if " WHERE " in query:
                 query += " AND"
             else:
                 query += " WHERE"
-            query += f" timestamp < '{end_datetime}'"
+            query += f" (timestamp < '{end_datetime}' OR timestamp = 'None')"
         if img_id is not None:
             if " WHERE " in query:
                 query += " AND"
@@ -62,4 +62,6 @@ class DbQuery(DbQuery):
     def get_date_range(self):
         query = f"SELECT MIN(create_datetime) AS min_date, MAX(create_datetime) AS max_date FROM {self.table}"
         df = super().query_data(query)
+        df.min_date = pd.to_datetime(df.min_date)
+        df.max_date = pd.to_datetime(df.max_date)
         return df.iloc[0].min_date, df.iloc[0].max_date
