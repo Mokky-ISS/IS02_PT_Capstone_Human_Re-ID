@@ -164,7 +164,7 @@ def home_page_content():
                         dcc.Upload(
                             id='upload-image',
                             accept='image/*',
-                            multiple=False,
+                            multiple=True,
                             children=[
                                 dbc.Button('Click to upload',
                                            id='upload-image-button',
@@ -495,25 +495,28 @@ def update_results_end_date_min(start_date, start_min_date):
 def show_database_images(path_db, start_date, start_hour, start_minute, end_date, end_hour, end_minute, cam_id, upload_img, upload_filename):
     dict_trig = get_callback_trigger()
     if 'upload-image' in dict_trig:
-        tooltip_msg = f"File name: {upload_filename}"
-        return [
-            dbc.Card([
-                dbc.CardLink(
-                    dbc.CardImg(
-                        src=upload_img,
-                        title=tooltip_msg.strip(),
-                        style={
-                            'width': '8vw',
-                            'object-fit': 'contain'
-                        },
+        images_col = []
+        for img, filename in zip(upload_img, upload_filename):
+            tooltip_msg = f"File name: {filename}"
+            images_col.append(
+                dbc.Card([
+                    dbc.CardLink(
+                        dbc.CardImg(
+                            src=img,
+                            title=tooltip_msg.strip(),
+                            style={
+                                'width': '8vw',
+                                'object-fit': 'contain'
+                            },
+                        ),
+                        key=filename,
+                        # f'{urlResults}?{urlencode(url_dict)}'
+                        href=get_results_href(
+                            path_db, img=img, img_filename=filename)
                     ),
-                    key=upload_filename,
-                    # f'{urlResults}?{urlencode(url_dict)}'
-                    href=get_results_href(
-                        path_db, img=upload_img, img_filename=upload_filename)
-                ),
-            ])
-        ]
+                ])
+            )
+        return images_col
     elif path_db is not None and cam_id is not None:
         dbimage = query_database.DbQuery(path_db)
         start_datetime = compile_start_datetime(start_date, start_hour, start_minute)
@@ -645,95 +648,96 @@ def show_results_images(pathname, search, n_clicks, start_date, start_hour, star
                 else:
                     dict_result[key] = [item[key]]
 
-        df = pd.DataFrame.from_dict(dict_result)
-        list_cams = sorted(df.cam_id.unique().tolist())
-        if cam_id is not None:
-            if cam_id in list_cams:
-                list_cams = [cam_id]
-            else:
-                list_cams = None
+        if len(dict_result) > 0:
+            df = pd.DataFrame.from_dict(dict_result)
+            list_cams = sorted(df.cam_id.unique().tolist())
+            if cam_id is not None:
+                if cam_id in list_cams:
+                    list_cams = [cam_id]
+                else:
+                    list_cams = None
 
-        start_datetime = compile_start_datetime(start_date, start_hour, start_minute)
-        end_datetime = compile_end_datetime(end_date, end_hour, end_minute)
-        if list_cams is not None and len(list_cams) > 0:
-            for cam_id in list_cams:
-                cam_images=[]
-                header = f'Camera {cam_id}'
-                for idx_cam, row_cam in df[df.cam_id == cam_id].iterrows():
-                    db_reid = query_reid.DbQuery(path_db)
-                    df_query = db_reid.get_images(row_cam.img_id)
-                    df_query.timestamp = pd.to_datetime(df_query.timestamp)
-                    if start_datetime is not None:
-                        df_query = df_query[df_query.timestamp >= start_datetime]
-                    if end_datetime is not None:
-                        df_query = df_query[df_query.timestamp < end_datetime]
-                    if len(df_query) > 0:
-                        if "loc" in df_query.columns:
-                            header = f'Camera {cam_id} {df_query[df_query.cam_id == cam_id]["loc"].iloc[0]}'
-                        for idx_query, row_query in df_query.iterrows():
-                            encoded_image = base64.b64encode(row_query.img)
-                            id_tag = f'result-img-id-{row_query.img_id}'
-                            tooltip = []
-                            if row_query.img_id is not None:
-                                tooltip.extend([
-                                    html.B('Image ID:'),
-                                    html.Br(),
-                                    html.Span(row_query.img_id),
-                                    html.Br(),
-                                ])
-                            if row_query.timestamp is not None:
-                                tooltip.extend([
-                                    html.B('Date time detected:'),
-                                    html.Br(),
-                                    html.Span(row_query.timestamp),
-                                    html.Br(),
-                                ])
-                            if row_cam.dist is not None:
-                                tooltip.extend([
-                                    html.B('Similarity: '),
-                                    #html.Br(),
-                                    html.Span(round(row_cam.dist,4)),
-                                ])
-                            cam_images.append(
-                                dbc.Card(
-                                    children=[
-                                        dbc.CardImg(
-                                            src='data:image/png;base64,{}'.format(encoded_image.decode()),
-                                            id=id_tag,
-                                            #title=tooltip_msg.strip(),
-                                            style={
-                                                'width': '8vw',
-                                                'object-fit': 'contain',
-                                                #'margin':'5%',
-                                            },
-                                        ),
-                                        dbc.Tooltip([
-                                            html.P(tooltip, style={'text-align': 'left'}),
-                                            dbc.Button(
-                                                html.B('Query this'),
-                                                id=f'query-img-id-{row_query.img_id}',
-                                                size="md",
-                                                href=get_results_href(path_db, img_id=row_query.img_id),
-                                                ),
-                                            ],
-                                            target=id_tag,
-                                            autohide=False,
-                                            style={'font-size': 'small'},
-                                        )
-                                    ]
-                                ))
+            start_datetime = compile_start_datetime(start_date, start_hour, start_minute)
+            end_datetime = compile_end_datetime(end_date, end_hour, end_minute)
+            if list_cams is not None and len(list_cams) > 0:
+                for cam_id in list_cams:
+                    cam_images=[]
+                    header = f'Camera {cam_id}'
+                    for _, row_cam in df[df.cam_id == cam_id].iterrows():
+                        db_reid = query_reid.DbQuery(path_db)
+                        df_query = db_reid.get_images(row_cam.img_id)
+                        df_query.timestamp = pd.to_datetime(df_query.timestamp)
+                        if start_datetime is not None:
+                            df_query = df_query[df_query.timestamp >= start_datetime]
+                        if end_datetime is not None:
+                            df_query = df_query[df_query.timestamp < end_datetime]
+                        if len(df_query) > 0:
+                            if "loc" in df_query.columns:
+                                header = f'Camera {cam_id} {df_query[df_query.cam_id == cam_id]["loc"].iloc[0]}'
+                            for idx_query, row_query in df_query.iterrows():
+                                encoded_image = base64.b64encode(row_query.img)
+                                id_tag = f'result-img-id-{row_query.img_id}'
+                                tooltip = []
+                                if row_query.img_id is not None:
+                                    tooltip.extend([
+                                        html.B('Image ID:'),
+                                        html.Br(),
+                                        html.Span(row_query.img_id),
+                                        html.Br(),
+                                    ])
+                                if row_query.timestamp is not None:
+                                    tooltip.extend([
+                                        html.B('Date time detected:'),
+                                        html.Br(),
+                                        html.Span(row_query.timestamp),
+                                        html.Br(),
+                                    ])
+                                if row_cam.dist is not None:
+                                    tooltip.extend([
+                                        html.B('Similarity: '),
+                                        #html.Br(),
+                                        html.Span(round(row_cam.dist,4)),
+                                    ])
+                                cam_images.append(
+                                    dbc.Card(
+                                        children=[
+                                            dbc.CardImg(
+                                                src='data:image/png;base64,{}'.format(encoded_image.decode()),
+                                                id=id_tag,
+                                                #title=tooltip_msg.strip(),
+                                                style={
+                                                    'width': '8vw',
+                                                    'object-fit': 'contain',
+                                                    #'margin':'5%',
+                                                },
+                                            ),
+                                            dbc.Tooltip([
+                                                html.P(tooltip, style={'text-align': 'left'}),
+                                                dbc.Button(
+                                                    html.B('Query this'),
+                                                    id=f'query-img-id-{row_query.img_id}',
+                                                    size="md",
+                                                    href=get_results_href(path_db, img_id=row_query.img_id),
+                                                    ),
+                                                ],
+                                                target=id_tag,
+                                                autohide=False,
+                                                style={'font-size': 'small'},
+                                            )
+                                        ]
+                                    ))
 
 
-                if len(cam_images) > 0:
-                    row_images.append(
-                        dbc.Card([
-                            dbc.CardHeader(header, style={'font-weight': 'bold'}),
-                            dbc.CardBody(dbc.Row(cam_images),style={'margin': '1%'},),
-                        ]))
-            if len(row_images) <= 0:
-                row_images.append(html.P('No results found!'))
-        else:
-            row_images.append(html.P('No results found!'))
+                    if len(cam_images) > 0:
+                        row_images.append(
+                            dbc.Card([
+                                dbc.CardHeader(header, style={'font-weight': 'bold'}),
+                                dbc.CardBody(dbc.Row(cam_images),style={'margin': '1%'},),
+                            ]))
+
+    if len(row_images) <= 0:
+        row_images.append(html.P('No results found!'))
+
     return row_images
 
 
