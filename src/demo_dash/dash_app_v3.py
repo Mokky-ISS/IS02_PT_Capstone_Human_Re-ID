@@ -354,8 +354,8 @@ def results_page_content(params):
                                     dcc.DatePickerSingle(
                                         id='results-filter-date-end-id',
                                         display_format='DD-MM-YYYY',
-                                        min_date_allowed=minDate,
-                                        max_date_allowed=maxDate),
+                                        min_date_allowed=minDate.strftime('%Y-%m-%d'),
+                                        max_date_allowed=maxDate.strftime('%Y-%m-%d')),
                                     width=True),
                             ]),
                             dbc.Row([
