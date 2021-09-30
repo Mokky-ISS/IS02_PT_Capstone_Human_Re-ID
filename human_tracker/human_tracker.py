@@ -47,6 +47,7 @@ def camera_capture(*args):
         flags.DEFINE_integer('cam_id', args[1], 'camera ID to run on different camera')
         flags.DEFINE_integer('gpu', args[2], 'gpu to run on different camera')
         flags.DEFINE_string('db_path', args[3], 'database save path.')
+        flags.DEFINE_string('loc', "NA", 'loc to run on different camera')
         print("db_path check: ", args[3])
         # args[-1] is manager.Value from multiprocessing 
         #flags.DEFINE_integer('stop_tracker', args[-1].value, 'run or stop human tracker')
