@@ -375,9 +375,9 @@ def results_page_content(params):
                                    options=dbquery.get_cam_id_options()),
                         ], style={'padding': '1%'}),
                 dbc.Col([
-                        html.P(children='Threshold (Default is 0.6)',
+                        html.P(children='Threshold (Default is 0.60)',
                             style={'font-weight': 'bold'}),
-                        dbc.Input(id='results-filter-threshold',type='number', step=0.1, value=0.6),
+                        dbc.Input(id='results-filter-threshold',type='number', step=0.01, value=0.6),
                     ],
                     style={'padding': '1%'}),
                 html.Br(),
