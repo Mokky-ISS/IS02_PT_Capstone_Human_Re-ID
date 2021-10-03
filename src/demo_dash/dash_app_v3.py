@@ -3,29 +3,19 @@ from PIL import Image
 import logging
 import os
 import dash
-from dash_bootstrap_components._components.Button import Button
-from dash_bootstrap_components._components.CardBody import CardBody
-from dash_bootstrap_components._components.CardHeader import CardHeader
-from dash_bootstrap_components._components.DropdownMenu import DropdownMenu
-from dash_bootstrap_components._components.Row import Row
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
-#from dash_html_components.H5 import H5
 from demo_dash import header_v3 as header
 from database import query_database, query_reid
 from urllib.parse import parse_qs, urlencode
 import base64
-import cv2
-import mediapipe as mp
-import dash_datetimepicker
 import sys
 import pandas as pd
 from datetime import datetime, timedelta
 sys.path.append('../')
 sys.path.append(f'../reid')
-#import inference
 from inference import reid_inference
 from utils import to_sqlite
 
@@ -400,6 +390,7 @@ def results_page_content(params):
         ),width=True,),
     ])
 
+
 @app.callback(
     Output(component_id='camera-id', component_property='options'),
     Input(component_id='database-id', component_property='value'),
@@ -478,6 +469,7 @@ def update_results_end_date_min(start_date, start_min_date):
         return start_date
     else:
         return start_min_date
+
 
 @app.callback(
     Output(component_id='view-db-images', component_property='children'),
@@ -582,48 +574,109 @@ def show_database_images(path_db, start_date, start_hour, start_minute, end_date
 
 
 @app.callback(
+    Output(component_id='results-filter-button', component_property='href'),
+    Input(component_id='results-filter-date-start-id', component_property='date'),
+    Input(component_id='results-filter-time-start-hr-id', component_property='value'),
+    Input(component_id='results-filter-time-start-min-id', component_property='value'),
+    Input(component_id='results-filter-date-end-id', component_property='date'),
+    Input(component_id='results-filter-time-end-hr-id', component_property='value'),
+    Input(component_id='results-filter-time-end-min-id', component_property='value'),
+    Input(component_id='results-filter-cam-id', component_property='value'),
+    Input(component_id='results-filter-threshold', component_property='value'),
+    State(component_id='url', component_property='pathname'),
+    State(component_id='url', component_property='search'),
+)
+def update_filter_link(start_date, start_hour, start_minute, end_date, end_hour, end_minute, filter_cam_id, filter_threshold, pathname, search):
+    path_db, img_id, img, img_filename, start_datetime, end_datetime, cam_id, threshold = decode_results_search_params(pathname, search)
+
+    #dict_trig = get_callback_trigger()
+    # date=None
+    # hour=None
+    # minute=None
+    # if start_datetime is not None:
+    #     date = start_datetime.date()
+    #     hour = start_datetime.hour
+    #     minute = start_datetime.minute
+    # if 'results-filter-date-start-id' in dict_trig:
+    #     date = start_date
+    # if 'results-filter-time-start-hr-id' in dict_trig:
+    #     hour = start_hour
+    # if 'results-filter-time-start-min-id' in dict_trig:
+    #     minute = start_minute
+    # start_datetime = compile_datetime(date, hour, minute)
+    start_datetime = compile_datetime(start_date, start_hour, start_minute)
+
+    # date = None
+    # hour = None
+    # minute = None
+    # if end_datetime is not None:
+    #     date = end_datetime.date()
+    #     hour = end_datetime.hour
+    #     minute = end_datetime.minute
+    # if 'results-filter-date-end-id' in dict_trig:
+    #     date = end_date
+    # if 'results-filter-time-end-hr-id' in dict_trig:
+    #     hour = end_hour
+    # if 'results-filter-time-end-min-id' in dict_trig:
+    #     minute = end_minute
+    # end_datetime = compile_datetime(date, hour, minute)
+    end_datetime = compile_datetime(end_date, end_hour, end_minute)
+
+    #if 'results-filter-cam-id' in dict_trig:
+    cam_id = filter_cam_id
+    #if 'results-filter-threshold' in dict_trig:
+    threshold = filter_threshold
+
+    return get_results_href(path_db, img_id=img_id, img=img,
+        img_filename=img_filename, start_datetime=start_datetime,
+        end_datetime=end_datetime, cam_id=cam_id, threshold=threshold)
+
+
+@app.callback(
     Output(component_id='display-results-col', component_property='children'),
     Input(component_id='url', component_property='pathname'),
     Input(component_id='url', component_property='search'),
-    Input(component_id='results-filter-button', component_property='n_clicks'),
-    State(component_id='results-filter-date-start-id', component_property='date'),
-    State(component_id='results-filter-time-start-hr-id', component_property='value'),
-    State(component_id='results-filter-time-start-min-id', component_property='value'),
-    State(component_id='results-filter-date-end-id', component_property='date'),
-    State(component_id='results-filter-time-end-hr-id', component_property='value'),
-    State(component_id='results-filter-time-end-min-id', component_property='value'),
-    State(component_id='results-filter-cam-id', component_property='value'),
-    State(component_id='results-filter-threshold', component_property='value'),
+    # Input(component_id='results-filter-button', component_property='n_clicks'),
+    # State(component_id='results-filter-date-start-id', component_property='date'),
+    # State(component_id='results-filter-time-start-hr-id', component_property='value'),
+    # State(component_id='results-filter-time-start-min-id', component_property='value'),
+    # State(component_id='results-filter-date-end-id', component_property='date'),
+    # State(component_id='results-filter-time-end-hr-id', component_property='value'),
+    # State(component_id='results-filter-time-end-min-id', component_property='value'),
+    # State(component_id='results-filter-cam-id', component_property='value'),
+    # State(component_id='results-filter-threshold', component_property='value'),
 )
-def show_results_images(pathname, search, n_clicks, start_date, start_hour, start_minute, end_date, end_hour, end_minute, cam_id, threshold):
-    dict_trig = get_callback_trigger()
+def show_results_images(pathname, search):#, n_clicks, start_date, start_hour, start_minute, end_date, end_hour, end_minute, cam_id, threshold):
+    # dict_trig = get_callback_trigger()
 
-    if 'url' in dict_trig or 'results-filter-button' not in dict_trig:
-        start_date = None
-        end_date = None
-        cam_id = None
-        threshold = None
+    # if 'url' in dict_trig or 'results-filter-button' not in dict_trig:
+    #     start_date = None
+    #     end_date = None
+    #     cam_id = None
+    #     threshold = None
 
-    params = extract_results_search_params(pathname, search)
-    if params is not None:
-        if 'database' in params:
-            path_db = params['database']
-        else:
-            path_db = None
-        if 'image_id' in params:
-            img_id = params['image_id']
-        else:
-            img_id = None
-        if 'image' in params:
-            img = params['image']
-        else:
-            img = None
-        if 'image_filename' in params:
-            img_name = params['image_filename']
-        else:
-            img_name = None
-    else:
-        return
+    # params = extract_results_search_params(pathname, search)
+    # if params is not None:
+    #     if 'database' in params:
+    #         path_db = params['database']
+    #     else:
+    #         path_db = None
+    #     if 'image_id' in params:
+    #         img_id = params['image_id']
+    #     else:
+    #         img_id = None
+    #     if 'image' in params:
+    #         img = params['image']
+    #     else:
+    #         img = None
+    #     if 'image_filename' in params:
+    #         img_name = params['image_filename']
+    #     else:
+    #         img_name = None
+    # else:
+    #     return
+
+    path_db, img_id, img, img_filename, start_datetime, end_datetime, cam_id, threshold = decode_results_search_params(pathname, search)
 
     if threshold is None:
         threshold = 0.6
@@ -657,8 +710,8 @@ def show_results_images(pathname, search, n_clicks, start_date, start_hour, star
                 else:
                     list_cams = None
 
-            start_datetime = compile_start_datetime(start_date, start_hour, start_minute)
-            end_datetime = compile_end_datetime(end_date, end_hour, end_minute)
+            # start_datetime = compile_start_datetime(start_date, start_hour, start_minute)
+            # end_datetime = compile_end_datetime(end_date, end_hour, end_minute)
             if list_cams is not None and len(list_cams) > 0:
                 for cam_id in list_cams:
                     cam_images=[]
@@ -700,10 +753,11 @@ def show_results_images(pathname, search, n_clicks, start_date, start_hour, star
                                     ])
                                 cam_images.append(
                                     dbc.Card(
+                                        id=id_tag,
                                         children=[
                                             dbc.CardImg(
                                                 src='data:image/png;base64,{}'.format(encoded_image.decode()),
-                                                id=id_tag,
+                                                #id=id_tag,
                                                 #title=tooltip_msg.strip(),
                                                 style={
                                                     'width': '8vw',
@@ -727,7 +781,6 @@ def show_results_images(pathname, search, n_clicks, start_date, start_hour, star
                                         ]
                                     ))
 
-
                     if len(cam_images) > 0:
                         row_images.append(
                             dbc.Card([
@@ -742,22 +795,100 @@ def show_results_images(pathname, search, n_clicks, start_date, start_hour, star
 
 
 @app.callback(
-    Output(component_id='results-filter-datetime', component_property='startDate'),
+    Output(component_id='results-filter-date-start-id', component_property='date'),
     Input(component_id='url', component_property='pathname'),
-    Input(component_id='url', component_property='search')
+    Input(component_id='url', component_property='search'),
+    State(component_id='results-filter-date-start-id', component_property='date'),
 )
-def UpdateResultsFilter(pathname, search):
-    params = extract_results_search_params(pathname, search)
-    layout_page = []
-    try:
-        if params is not None and pathname[1:] == 'results':
-            layout_page.append(results_page_content(params))
-        else:
-            layout_page.append(home_page_content())
-    except Exception as ex:
-        logging.error(ex)
-    return None  # , title
+def UpdateStartDateFilter(pathname, search, start_date):
+    _, _, _, _, start_datetime, _, _, _ = decode_results_search_params(pathname, search)
+    if start_datetime is None:
+        return start_date
+    return start_datetime.strftime('%Y-%m-%d')
 
+@app.callback(
+    Output(component_id='results-filter-time-start-hr-id', component_property='value'),
+    Input(component_id='url', component_property='pathname'),
+    Input(component_id='url', component_property='search'),
+    State(component_id='results-filter-time-start-hr-id', component_property='value'),
+)
+def UpdateStartHourFilter(pathname, search, start_hour):
+    _, _, _, _, start_datetime, _, _, _ = decode_results_search_params(pathname, search)
+    if start_datetime is None:
+        return start_hour
+    return start_datetime.hour
+
+@app.callback(
+    Output(component_id='results-filter-time-start-min-id',component_property='value'),
+    Input(component_id='url', component_property='pathname'),
+    Input(component_id='url', component_property='search'),
+    State(component_id='results-filter-time-start-min-id',component_property='value'),
+)
+def UpdateStartMinuteFilter(pathname, search, start_minute):
+    _, _, _, _, start_datetime, _, _, _ = decode_results_search_params(pathname, search)
+    if start_datetime is None:
+        return start_minute
+    return start_datetime.minute
+
+@app.callback(
+    Output(component_id='results-filter-date-end-id', component_property='date'),
+    Input(component_id='url', component_property='pathname'),
+    Input(component_id='url', component_property='search'),
+    State(component_id='results-filter-date-end-id', component_property='date'),
+)
+def UpdateEndDateFilter(pathname, search, end_date):
+    _, _, _, _, _, end_datetime, _, _ = decode_results_search_params(pathname, search)
+    if end_datetime is None:
+        return end_date
+    return end_datetime.strftime('%Y-%m-%d')
+
+@app.callback(
+    Output(component_id='results-filter-time-end-hr-id', component_property='value'),
+    Input(component_id='url', component_property='pathname'),
+    Input(component_id='url', component_property='search'),
+    State(component_id='results-filter-time-end-hr-id', component_property='value'),
+)
+def UpdateEndHourFilter(pathname, search, end_hour):
+    _, _, _, _, _, end_datetime, _, _ = decode_results_search_params(pathname, search)
+    if end_datetime is None:
+        return end_hour
+    return end_datetime.hour
+
+@app.callback(
+    Output(component_id='results-filter-time-end-min-id', component_property='value'),
+    Input(component_id='url', component_property='pathname'),
+    Input(component_id='url', component_property='search'),
+    State(component_id='results-filter-time-end-min-id', component_property='value'),
+)
+def UpdateEndMinuteFilter(pathname, search, end_minute):
+    _, _, _, _, _, end_datetime, _, _ = decode_results_search_params(pathname, search)
+    if end_datetime is None:
+        return end_minute
+    return end_datetime.minute
+
+@app.callback(
+    Output(component_id='results-filter-cam-id', component_property='value'),
+    Input(component_id='url', component_property='pathname'),
+    Input(component_id='url', component_property='search'),
+    State(component_id='results-filter-cam-id', component_property='value'),
+)
+def UpdateCamIdFilter(pathname, search, filter_cam_id):
+    _, _, _, _, _, _, cam_id, _ = decode_results_search_params(pathname, search)
+    if cam_id is None:
+        return filter_cam_id
+    return cam_id
+
+@app.callback(
+    Output(component_id='results-filter-threshold', component_property='value'),
+    Input(component_id='url', component_property='pathname'),
+    Input(component_id='url', component_property='search'),
+    State(component_id='results-filter-threshold', component_property='value'),
+)
+def UpdateThresholdFilter(pathname, search, filter_threshold):
+    _, _, _, _, _, _, _, threshold = decode_results_search_params(pathname, search)
+    if threshold is None:
+        return filter_threshold
+    return threshold
 
 def get_database_options():
     path_folder = f'../reid/archive'
@@ -841,8 +972,7 @@ def init_reid(db_path):
         _reid_db_path = db_path
 
 
-
-def get_results_href(path_db, img_id=None, img=None, img_filename=None, start_date=None, end_date=None, cam_id=None, threshold=None):
+def get_results_href(path_db, img_id=None, img=None, img_filename=None, start_datetime=None, end_datetime=None, cam_id=None, threshold=None):
     urlResults = '/results'
     url_dict = {'database': path_db}
     if img_id is not None:
@@ -851,10 +981,10 @@ def get_results_href(path_db, img_id=None, img=None, img_filename=None, start_da
         url_dict['image'] = img
     if img_filename is not None:
         url_dict['image_filename'] = img_filename
-    if start_date is not None:
-        url_dict['start'] = start_date
-    if end_date is not None:
-        url_dict['end'] = end_date
+    if start_datetime is not None:
+        url_dict['start'] = start_datetime
+    if end_datetime is not None:
+        url_dict['end'] = end_datetime
     if cam_id is not None:
         url_dict['camera'] = cam_id
     if threshold is not None:
@@ -862,14 +992,41 @@ def get_results_href(path_db, img_id=None, img=None, img_filename=None, start_da
 
     return f'{urlResults}?{urlencode(url_dict)}'
 
+
+def decode_results_search_params(pathname, search):
+    path_db = None
+    img_id = None
+    img = None
+    img_filename = None
+    start_datetime = None
+    end_datetime = None
+    cam_id = None
+    threshold = None
+    params = extract_results_search_params(pathname, search)
+    if params is not None:
+        if 'database' in params:
+            path_db = params['database']
+        if 'image_id' in params:
+            img_id = params['image_id']
+        if 'image' in params:
+            img = params['image']
+        if 'image_filename' in params:
+            img_filename = params['image_filename']
+        if 'start' in params:
+            start_datetime = extract_datetime(params['start'])
+        if 'end' in params:
+            end_datetime = extract_datetime(params['end'])
+        if 'camera' in params:
+            cam_id = int(params['camera'])
+        if 'threshold' in params:
+            threshold = float(params['threshold'])
+
+    return path_db, img_id, img, img_filename, start_datetime, end_datetime, cam_id, threshold
+
+
 def compile_start_datetime(start_date, start_hour, start_minute):
-    if start_date is None:
-        return None
-    if start_hour is None:
-        start_hour = 0
-    if start_minute is None:
-        start_minute = 0
     return compile_datetime(start_date, start_hour, start_minute)
+
 
 def compile_end_datetime(end_date, end_hour, end_minute):
     if end_date is None:
@@ -881,6 +1038,17 @@ def compile_end_datetime(end_date, end_hour, end_minute):
     else:
         return compile_datetime(end_date, end_hour, end_minute) + timedelta(minutes=1)
 
+
 def compile_datetime(date, hour, minute):
+    if date is None:
+        return None
+    if hour is None:
+        hour = 0
+    if minute is None:
+        minute = 0
     date_string = f"{date} {hour}:{minute}"
     return datetime.strptime(date_string, "%Y-%m-%d %H:%M")
+
+
+def extract_datetime(datetime_str):
+    return datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
